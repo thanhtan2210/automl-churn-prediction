@@ -1,7 +1,0 @@
-streamlit
-pandas
-pyarrow
-seaborn
-matplotlib
-s3fs
-mlflow

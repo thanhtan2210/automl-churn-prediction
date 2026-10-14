@@ -1,9 +1,0 @@
-fastapi[all]==0.100.0
-uvicorn[standard]==0.22.0
-mlflow>=2.12,<3
-pandas
-scikit-learn
-joblib
-s3fs
-boto3
-python-dotenv
