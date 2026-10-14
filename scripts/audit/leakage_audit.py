@@ -17,17 +17,12 @@ Outputs:
 from __future__ import annotations
 
 import argparse
-import ctypes
-import hashlib
 import json
-import os
-import platform
 import sys
 import time
 import warnings
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
-from importlib import metadata
 from pathlib import Path
 
 import numpy as np
@@ -44,6 +39,9 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 from sklearn.model_selection import KFold, StratifiedKFold, cross_val_score, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
+
+from src.churn.runinfo import environment, sha256_file
+from src.churn.stats import ci95, paired_bootstrap
 
 SEED = 42
 N_BOOTSTRAP = 1000
@@ -87,14 +85,6 @@ class Dataset:
         return self.df[self.target]
 
 
-def _sha256(path: Path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(1 << 20), b""):
-            h.update(chunk)
-    return h.hexdigest()
-
-
 def load_raw(name: str) -> tuple[pd.DataFrame, str, Path]:
     if name == "telco":
         path = ROOT / "data" / "raw" / "Telco_customer_churn.xlsx"
@@ -131,7 +121,7 @@ def prepare(name: str) -> tuple[Dataset, pd.DataFrame]:
 
     info = {
         "file": str(path.relative_to(ROOT)).replace("\\", "/"),
-        "sha256": _sha256(path),
+        "sha256": sha256_file(path),
         "n_rows_raw": int(n_raw),
         "n_duplicates_removed": int(n_raw - len(df)),
         "n_rows": int(len(df)),
@@ -379,10 +369,6 @@ def run_stage(stage: Stage, ds: Dataset) -> dict:
 # (b) Final clean model vs baseline, test set used once
 # --------------------------------------------------------------------------------------
 
-def _ci(values: list[float]) -> list[float]:
-    return [float(np.percentile(values, 2.5)), float(np.percentile(values, 97.5))]
-
-
 def final_comparison(ds: Dataset, drop: tuple[str, ...]) -> dict:
     t0 = time.perf_counter()
     feats = [c for c in ds.features if c not in drop]
@@ -411,27 +397,17 @@ def final_comparison(ds: Dataset, drop: tuple[str, ...]) -> dict:
     # Paired bootstrap on the test set: same resampled rows for both models.
     y = y_te.to_numpy()
     a, b = proba["lightgbm"], proba["logistic_regression"]
-    rng = np.random.default_rng(SEED)
-    boot = {k: [] for k in ("roc_a", "roc_b", "pr_a", "pr_b", "roc_diff", "pr_diff")}
-    for _ in range(N_BOOTSTRAP):
-        idx = rng.integers(0, len(y), len(y))
-        if y[idx].min() == y[idx].max():
-            continue
-        ra, rb = roc_auc_score(y[idx], a[idx]), roc_auc_score(y[idx], b[idx])
-        pa, pb = average_precision_score(y[idx], a[idx]), average_precision_score(y[idx], b[idx])
-        boot["roc_a"].append(ra); boot["roc_b"].append(rb)
-        boot["pr_a"].append(pa); boot["pr_b"].append(pb)
-        boot["roc_diff"].append(ra - rb); boot["pr_diff"].append(pa - pb)
+    boot = paired_bootstrap(y, a, b, n_boot=N_BOOTSTRAP, seed=SEED)
 
-    out["lightgbm"]["test_roc_auc_ci95"] = _ci(boot["roc_a"])
-    out["lightgbm"]["test_pr_auc_ci95"] = _ci(boot["pr_a"])
-    out["logistic_regression"]["test_roc_auc_ci95"] = _ci(boot["roc_b"])
-    out["logistic_regression"]["test_pr_auc_ci95"] = _ci(boot["pr_b"])
+    out["lightgbm"]["test_roc_auc_ci95"] = ci95(boot["roc_a"])
+    out["lightgbm"]["test_pr_auc_ci95"] = ci95(boot["pr_a"])
+    out["logistic_regression"]["test_roc_auc_ci95"] = ci95(boot["roc_b"])
+    out["logistic_regression"]["test_pr_auc_ci95"] = ci95(boot["pr_b"])
     out["difference_lightgbm_minus_lr"] = {
         "roc_auc": out["lightgbm"]["test_roc_auc"] - out["logistic_regression"]["test_roc_auc"],
-        "roc_auc_ci95": _ci(boot["roc_diff"]),
+        "roc_auc_ci95": ci95(boot["roc_diff"]),
         "pr_auc": out["lightgbm"]["test_pr_auc"] - out["logistic_regression"]["test_pr_auc"],
-        "pr_auc_ci95": _ci(boot["pr_diff"]),
+        "pr_auc_ci95": ci95(boot["pr_diff"]),
     }
     out["bootstrap"] = {"n_requested": N_BOOTSTRAP, "n_used": len(boot["roc_a"]), "paired": True, "seed": SEED}
     out["test_n"] = int(len(y))
@@ -526,43 +502,6 @@ def high_auc_diagnostics(ds: Dataset, suspects: tuple[str, ...], derived: str) -
 
 
 # --------------------------------------------------------------------------------------
-# Environment
-# --------------------------------------------------------------------------------------
-
-def _total_ram_gb() -> float | None:
-    if os.name != "nt":
-        try:
-            return round(os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES") / 1024**3, 1)
-        except (ValueError, OSError, AttributeError):
-            return None
-
-    class MemoryStatus(ctypes.Structure):
-        _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong),
-                    ("ullTotalPhys", ctypes.c_ulonglong), ("ullAvailPhys", ctypes.c_ulonglong),
-                    ("ullTotalPageFile", ctypes.c_ulonglong), ("ullAvailPageFile", ctypes.c_ulonglong),
-                    ("ullTotalVirtual", ctypes.c_ulonglong), ("ullAvailVirtual", ctypes.c_ulonglong),
-                    ("ullAvailExtendedVirtual", ctypes.c_ulonglong)]
-
-    status = MemoryStatus()
-    status.dwLength = ctypes.sizeof(MemoryStatus)
-    if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
-        return round(status.ullTotalPhys / 1024**3, 1)
-    return None
-
-
-def environment() -> dict:
-    libs = ["pandas", "numpy", "scikit-learn", "imbalanced-learn", "lightgbm", "openpyxl", "scipy"]
-    return {
-        "python": platform.python_version(),
-        "platform": platform.platform(),
-        "processor": platform.processor(),
-        "cpu_count": os.cpu_count(),
-        "ram_gb": _total_ram_gb(),
-        "libraries": {name: metadata.version(name) for name in libs},
-    }
-
-
-# --------------------------------------------------------------------------------------
 # Main
 # --------------------------------------------------------------------------------------
 
@@ -647,7 +586,9 @@ def audit(name: str) -> dict:
             print("  STOP CHECK TRIGGERED: review before calling any column leakage.", flush=True)
         report["diagnostics"] = high_auc_diagnostics(ds, IRANIAN_SUSPECT_COLUMNS, "Customer Value")
 
-    report["environment"] = environment()
+    report["environment"] = environment(
+        ["pandas", "numpy", "scikit-learn", "imbalanced-learn", "lightgbm", "openpyxl", "scipy"]
+    )
     report["runtime_seconds"] = round(time.perf_counter() - t0, 1)
     return report
 
