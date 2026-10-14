@@ -13,6 +13,7 @@ data/
 !data/dataset/catalog.yaml
 mlruns/
 mlruns_test/
+mlruns_audit/
 mlflow.db
 models/
 ci_outputs/
