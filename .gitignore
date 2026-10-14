@@ -16,7 +16,6 @@ mlruns_test/
 mlruns_audit/
 data/raw/cell2cell/
 mlflow.db
-models/
 ci_outputs/
 tests/results/
 *.db
@@ -24,10 +23,8 @@ test_*.db
 test_*.txt
 test_*.json
 tests/**/*.db
-*.joblib
 *.pkl
-backend/app/core/training/*.joblib
-backend/app/core/training/*.pkl
+# models/<dataset>/model.joblib is small and committed (written by src.churn.evaluate)
 
 # Dependencies
 node_modules/
