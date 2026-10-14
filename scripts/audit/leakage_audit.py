@@ -34,14 +34,14 @@ import numpy as np
 import pandas as pd
 from imblearn.over_sampling import SMOTE, SMOTENC
 from imblearn.pipeline import Pipeline as ImbPipeline
-from lightgbm import LGBMClassifier
+from lightgbm import LGBMClassifier, LGBMRegressor
 from sklearn.base import BaseEstimator, TransformerMixin, clone
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.compose import ColumnTransformer, make_column_selector
 from sklearn.impute import SimpleImputer
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.metrics import average_precision_score, roc_auc_score
-from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
+from sklearn.model_selection import KFold, StratifiedKFold, cross_val_score, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
@@ -476,6 +476,55 @@ def single_feature_auc(raw: pd.DataFrame, ds: Dataset) -> pd.DataFrame:
     return pd.DataFrame(rows).sort_values("cv_auc_mean", ascending=False, kind="mergesort").reset_index(drop=True)
 
 
+def high_auc_diagnostics(ds: Dataset, suspects: tuple[str, ...], derived: str) -> dict:
+    """Where does a very high clean AUC come from? Training split only, the test set is not touched."""
+    t0 = time.perf_counter()
+    X, y = ds.df.loc[ds.train_idx, ds.features], ds.y.loc[ds.train_idx]
+
+    def lgbm_pipe():
+        return ImbPipeline([("fe", GenericRatioFE()), ("prep", make_tree_prep()), ("model", make_lgbm("balanced"))])
+
+    def cv_auc(frame: pd.DataFrame) -> float:
+        return float(np.mean(cross_val_score(lgbm_pipe(), frame, y, cv=make_cv(), scoring="roc_auc")))
+
+    base = cv_auc(X)
+    drop_one = [{"dropped": c, "cv_auc": (s := cv_auc(X.drop(columns=[c]))), "delta": s - base} for c in ds.features]
+    drop_suspects = cv_auc(X.drop(columns=list(suspects)))
+
+    pairs = []
+    for i, a in enumerate(ds.features):
+        for b in ds.features[i + 1:]:
+            s = cross_val_score(make_lgbm(max_depth=3), X[[a, b]], y, cv=make_cv(), scoring="roc_auc")
+            pairs.append({"columns": [a, b], "cv_auc": float(np.mean(s))})
+    pairs.sort(key=lambda r: r["cv_auc"], reverse=True)
+
+    # Is the derived column a function of the others?
+    others = [c for c in ds.features if c != derived]
+    kfold = KFold(n_splits=5, shuffle=True, random_state=SEED)
+    r2 = {}
+    for label, reg in (("linear", LinearRegression()),
+                       ("lightgbm", LGBMRegressor(n_estimators=300, learning_rate=0.05, random_state=SEED, verbose=-1))):
+        r2[label] = float(np.mean(cross_val_score(reg, X[others], X[derived], cv=kfold, scoring="r2")))
+
+    rates = {}
+    for c in suspects + ("Complains",):
+        if c in X.columns and X[c].nunique() <= 10:
+            g = y.groupby(X[c])
+            rates[c] = {str(k): {"n": int(g.size()[k]), "churn_rate": float(g.mean()[k])} for k in g.size().index}
+
+    return {
+        "computed_on": "training split only (5-fold CV); S6 LightGBM pipeline unless stated",
+        "cv_auc_all_features": base,
+        "drop_one": drop_one,
+        "drop_suspects": {"dropped": list(suspects), "cv_auc": drop_suspects},
+        "top_pairs_shallow_lgbm": pairs[:10],
+        "derived_column": derived,
+        "derived_column_r2_from_others": r2,
+        "churn_rate_by_value": rates,
+        "seconds": round(time.perf_counter() - t0, 2),
+    }
+
+
 # --------------------------------------------------------------------------------------
 # Environment
 # --------------------------------------------------------------------------------------
@@ -596,6 +645,7 @@ def audit(name: str) -> dict:
         report["stop_check"] = checks
         if checks["triggered"]:
             print("  STOP CHECK TRIGGERED: review before calling any column leakage.", flush=True)
+        report["diagnostics"] = high_auc_diagnostics(ds, IRANIAN_SUSPECT_COLUMNS, "Customer Value")
 
     report["environment"] = environment()
     report["runtime_seconds"] = round(time.perf_counter() - t0, 1)
@@ -683,7 +733,8 @@ def render_markdown() -> None:
             "",
             f"`{d['file']}`: {d['n_rows_raw']} rows, {d['n_duplicates_removed']} duplicates removed, "
             f"train {d['n_train']} / test {d['n_test']}, churn rate {d['positive_rate_all']:.1%}. "
-            f"Identifier columns always dropped: {', '.join('`' + c + '`' for c in d['dropped_identifier_columns'])}.",
+            f"Always dropped (identifiers, and `Churn Label`, a copy of the target): "
+            f"{', '.join('`' + c + '`' for c in d['dropped_identifier_columns'])}.",
             "",
             "### (a) Leakage ladder",
             "",
@@ -728,14 +779,35 @@ def render_markdown() -> None:
         if reason:
             L.append(
                 f"- `Churn Reason` is missing for {reason['missing_rate_negative']:.1%} of non-churners and "
-                f"{reason['missing_rate_positive']:.1%} of churners in the training split, so its missingness "
-                f"alone has AUC {_f(reason['missing_indicator_auc'])}: it is written after the outcome."
+                f"{reason['missing_rate_positive']:.1%} of churners in the training split: its missingness alone "
+                f"separates the classes (missing-indicator AUC {_f(reason['missing_indicator_auc'])}, "
+                f"i.e. {_f(1 - reason['missing_indicator_auc'])} inverted). It only exists after a customer has left."
             )
         if score:
             L.append(
-                f"- `Churn Score` alone reaches CV AUC {_f(score['cv_auc_mean'])}; together with `CLTV` it is an "
-                "output of IBM's own model, not an input a telecom analyst would have before churn."
+                f"- `Churn Score` alone reaches CV AUC {_f(score['cv_auc_mean'])}. Per IBM's column description, "
+                "`Churn Score` and `CLTV` are outputs of IBM's own models, not raw customer attributes."
             )
+        refs = {r["key"]: r for r in t.get("reference_settings", [])}
+        before = refs.get("clean features, SMOTENC before CV")
+        inside = refs.get("clean features, SMOTENC in Pipeline")
+        if before and inside:
+            L.append(
+                "- `Churn Reason` makes every model perfect, which hides the SMOTE effect in the ladder. "
+                f"With clean features, SMOTENC before CV gives CV AUC {_f(before['cv_auc_mean'])} vs "
+                f"{_f(inside['cv_auc_mean'])} when it is fitted per fold, while test AUC is "
+                f"{_f(before['test_auc'])} vs {_f(inside['test_auc'])}: the oversampling leak inflates the "
+                "CV estimate, not the model."
+            )
+        diff = t["final"]["difference_lightgbm_minus_lr"]
+        lo, hi = diff["roc_auc_ci95"]
+        L.append(
+            f"- Clean LightGBM minus Logistic Regression on test ROC-AUC: {diff['roc_auc']:+.3f} "
+            f"(95% CI [{lo:.3f}, {hi:.3f}]). "
+            + ("The interval contains 0: no evidence that LightGBM beats the linear baseline on this file."
+               if lo <= 0 <= hi else
+               ("LightGBM is better than the baseline." if lo > 0 else "The baseline is better than LightGBM."))
+        )
         fe_all_rows = t["ladder"][2]["fe_selected_columns"]
         fe_train = t["ladder"][3]["fe_selected_columns"]
         same = sorted(fe_all_rows) == sorted(fe_train)
@@ -780,7 +852,9 @@ def render_markdown() -> None:
             "",
             f"`{d['file']}`: {d['n_rows_raw']} rows, **{d['n_duplicates_removed']} exact duplicates removed**, "
             f"train {d['n_train']} / test {d['n_test']}, churn rate {d['positive_rate_all']:.1%}. "
-            "All 13 columns are used as features (no column is excluded at this stage).",
+            f"After de-duplication, {d['n_conflicting_label_duplicates_in_clean_feature_set']} groups of rows "
+            "share identical features but have different labels. "
+            "All 13 columns are used as features (no column is excluded).",
             "",
             "### (b) Result on the test set (all features)",
             "",
@@ -807,6 +881,53 @@ def render_markdown() -> None:
                 L.append(f"- `{c}` alone: {_f(sc.get('single_auc_' + c))}")
             L.append(f"- Clean LightGBM test AUC: {_f(sc['clean_test_auc_lightgbm'])}")
             L.append(f"- Triggered: **{'yes — needs a decision before any column is called leakage' if sc['triggered'] else 'no'}**")
+        dg = ir.get("diagnostics")
+        if dg:
+            worst = min(dg["drop_one"], key=lambda r: r["delta"])
+            max_abs = max(abs(r["delta"]) for r in dg["drop_one"])
+            best_pair = dg["top_pairs_shallow_lgbm"][0]
+            best_single = ir["single_feature"]["rows"][0]
+            L += [
+                "",
+                "### Where the high AUC comes from (training split only)",
+                "",
+                f"All 13 columns: CV AUC {_f(dg['cv_auc_all_features'])}.",
+                "",
+                "| Dropped column | CV AUC | Change |",
+                "|---|---|---|",
+            ]
+            for r in sorted(dg["drop_one"], key=lambda r: r["delta"]):
+                L.append(f"| `{r['dropped']}` | {_f(r['cv_auc'])} | {r['delta']:+.3f} |")
+            ds_ = dg["drop_suspects"]
+            L.append(f"| {' + '.join('`' + c + '`' for c in ds_['dropped'])} | {_f(ds_['cv_auc'])} | "
+                     f"{ds_['cv_auc'] - dg['cv_auc_all_features']:+.3f} |")
+            L += [
+                "",
+                "Best two-column models (shallow LightGBM): "
+                + "; ".join(f"{' + '.join('`' + c + '`' for c in p['columns'])} {_f(p['cv_auc'])}"
+                            for p in dg["top_pairs_shallow_lgbm"][:5]) + ".",
+                "",
+                f"`{dg['derived_column']}` predicted from the other 12 columns: CV R² "
+                f"{_f(dg['derived_column_r2_from_others']['linear'])} (linear), "
+                f"{_f(dg['derived_column_r2_from_others']['lightgbm'])} (LightGBM).",
+                "",
+            ]
+            for col, vals in dg["churn_rate_by_value"].items():
+                L.append(f"- Churn rate by `{col}`: " + ", ".join(
+                    f"{k} → {v['churn_rate']:.1%} (n={v['n']})" for k, v in vals.items()) + ".")
+            L += [
+                "",
+                "**Reading.** The best single column reaches "
+                f"{_f(best_single['cv_auc_mean'])} (`{best_single['column']}`) and the best pair "
+                f"{_f(best_pair['cv_auc'])}; removing any one column moves CV AUC by at most {max_abs:.3f} "
+                f"(largest drop: `{worst['dropped']}`). The score comes from many usage columns together, "
+                f"not from one column that encodes the label. `{dg['derived_column']}` is close to a function "
+                "of the other columns, so it is redundant rather than a separate leak. Per the UCI description "
+                "all columns are aggregated over months 1–9 and the label is taken at month 12. "
+                "Decision (2026-10-14): no column is treated as leakage; all 13 are kept, and the AUC is "
+                "reported as unusually high for a churn problem. The source does not document why this file "
+                "is so separable.",
+            ]
         L.append("")
 
     if reports:
