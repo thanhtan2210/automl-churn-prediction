@@ -1,34 +1,6 @@
-# Ruff configuration for Scalable-CDP
-# https://docs.astral.sh/ruff/configuration/
 target-version = "py311"
-
-# Files/directories to skip
-exclude = [
-    ".venv",
-    ".git",
-    "__pycache__",
-    "mlruns",
-    "mlruns_test",
-    "backend/app/db/migrations",
-    "notebooks",
-    "data",
-    "frontend",
-]
+line-length = 120
+exclude = [".venv", "frontend", "notebooks", "data", "mlruns", "models"]
 
 [lint]
-# Rules to enable
-select = ["E", "F", "W"]
-
-# Rules to ignore globally (pre-existing patterns in this codebase)
-# F401: unused imports
-# F811: redefinition of unused names (intentional inline imports)
-# E402: module-level import not at top of file (common pattern in this codebase)
-# E701: multiple statements on one line (style choice)
-# E722: bare except (legacy code)
-# F841: local variable assigned but never used
-# F541: f-string without placeholders
-# E712: avoid equality comparisons to True (SQLAlchemy ORM filter pattern)
-ignore = ["F401", "F811", "E402", "E701", "E722", "F841", "F541", "E712", "E501", "W293", "W291", "W292"]
-
-[lint.per-file-ignores]
-"__init__.py" = ["F401"]
+select = ["E", "F", "W", "I", "B"]
