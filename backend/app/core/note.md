@@ -1,8 +1,0 @@
-- Reproducibility: modules return the same outputs for the same inputs — no hidden notebook "cell state".
-- Testability: small functions are easy to unit test (convert dtypes, drop NA, mapping, feature engineering).
-- Maintainability: organized code that’s easier to refactor, read, review, and version control.
-- Reusability: reuse in scripts, add to Airflow DAGs, or run via CLI/daily jobs.
-- Automation / CI: integrate linting, pytest, and pipeline builds for deployability.
-- Observability & Error handling: add logging, retries, and idempotency for production jobs.
-- Parameterization & configurability: change paths/partitioning/thresholds without editing notebook cells.
-- Performance & scaling: separate I/O (chunking, parquet, partition) and logic to optimize more easily.
