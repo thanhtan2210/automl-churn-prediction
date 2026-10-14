@@ -1,0 +1,87 @@
+{
+  "generated_by": "python legacy_repro.py (on a checkout of archive/before-cleanup)",
+  "settings": {
+    "OPTUNA_N_TRIALS": "10",
+    "ENABLE_STACKING": "false",
+    "MLFLOW_TRACKING_URI": "file:./mlruns_audit",
+    "COMPOSITE_SYNTHESIS_ENABLED": "false"
+  },
+  "n_train": 5634,
+  "n_test": 1409,
+  "profiler_recommended_target": "Churn Label",
+  "profiler_leakage_flags": {
+    "Churn Value": 1.0
+  },
+  "confirmed_roles": {
+    "CustomerID": "ID",
+    "Count": "IGNORE",
+    "Country": "IGNORE",
+    "State": "IGNORE",
+    "City": "CATEGORICAL",
+    "Zip Code": "NUMERIC",
+    "Lat Long": "CATEGORICAL",
+    "Latitude": "NUMERIC",
+    "Longitude": "NUMERIC",
+    "Gender": "CATEGORICAL",
+    "Senior Citizen": "CATEGORICAL",
+    "Partner": "CATEGORICAL",
+    "Dependents": "CATEGORICAL",
+    "Tenure Months": "NUMERIC",
+    "Phone Service": "CATEGORICAL",
+    "Multiple Lines": "CATEGORICAL",
+    "Internet Service": "CATEGORICAL",
+    "Online Security": "CATEGORICAL",
+    "Online Backup": "CATEGORICAL",
+    "Device Protection": "CATEGORICAL",
+    "Tech Support": "CATEGORICAL",
+    "Streaming TV": "CATEGORICAL",
+    "Streaming Movies": "CATEGORICAL",
+    "Contract": "CATEGORICAL",
+    "Paperless Billing": "CATEGORICAL",
+    "Payment Method": "CATEGORICAL",
+    "Monthly Charges": "NUMERIC",
+    "Total Charges": "ID",
+    "Churn Label": "IGNORE",
+    "Churn Value": "TARGET",
+    "Churn Score": "NUMERIC",
+    "CLTV": "NUMERIC",
+    "Churn Reason": "CATEGORICAL"
+  },
+  "train_seconds": 179.8,
+  "model_class": "LogisticRegression_Sparse",
+  "optuna_n_trials": 10,
+  "mlflow_metrics": {
+    "best_roc_auc": 0.9985640540933546,
+    "optimal_threshold": 0.8571428571428571,
+    "roc_auc_post_calibration": 0.9985640540933546,
+    "roc_auc_pre_calibration": 0.99811368006075
+  },
+  "reported_best_roc_auc": 0.9985640540933546,
+  "predict_on_raw_columns": "ValueError: columns are missing: {'gen_ratio_Churn Score__Zip Code', 'gen_log1p_CLTV', 'gen_ratio_Churn Score__Monthly Charges', 'gen_log1p_Monthly Charges', 'gen_ratio_Churn Score__CLTV', 'gen_ratio_Tenure Month",
+  "generic_fe_columns_chosen_on_train": [
+    "Churn Score",
+    "Tenure Months",
+    "Monthly Charges",
+    "CLTV",
+    "Zip Code"
+  ],
+  "test_roc_auc": 0.9934369268128859,
+  "environment": {
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "cpu_count": 8,
+    "libraries": {
+      "pandas": "2.3.3",
+      "numpy": "2.2.6",
+      "scikit-learn": "1.7.2",
+      "xgboost": "3.2.0",
+      "lightgbm": "4.7.0",
+      "imbalanced-learn": "0.14.2",
+      "mlflow": "2.22.4",
+      "optuna": "4.9.0",
+      "pandera": "0.29.0",
+      "pydantic": "2.12.5"
+    }
+  },
+  "runtime_seconds": 184.2
+}
