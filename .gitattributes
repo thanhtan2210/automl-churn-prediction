@@ -1,0 +1,2 @@
+# Keep raw data byte-for-byte so SHA256 checksums in SOURCE.md stay valid on every OS.
+data/raw/** -text
