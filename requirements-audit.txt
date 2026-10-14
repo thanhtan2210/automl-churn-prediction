@@ -1,0 +1,9 @@
+# Pinned dependencies for the Phase 1 leakage audit (scripts/audit/) only.
+# Installed with Python 3.11.9 on Windows. The app's requirements.txt is rewritten in Phase 2.
+pandas==2.3.3
+numpy==2.2.6
+scikit-learn==1.7.2
+imbalanced-learn==0.14.2
+lightgbm==4.7.0
+openpyxl==3.1.5
+scipy==1.17.1
