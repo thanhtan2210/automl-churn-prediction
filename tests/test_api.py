@@ -1,4 +1,5 @@
 import io
+import math
 
 import pandas as pd
 import pytest
@@ -70,10 +71,18 @@ def test_full_flow_upload_profile_train_predict(client):
     out = res.json()
     assert out["n_rows"] == 40
     assert out["id_column"] == "CustomerID"
+    assert set(out["features"]) == set(features)
+    assert set(out["numeric_features"]) <= set(out["features"])
     assert [p["id"] for p in out["predictions"]] == new["CustomerID"].tolist()
     for p in out["predictions"]:
         assert 0 <= p["probability"] <= 1
         assert p["flagged"] == (p["probability"] >= out["threshold"])
+        assert len(p["contributions"]) == len(out["features"]) == len(p["values"])
+        log_odds = math.log(p["probability"] / (1 - p["probability"]))
+        assert abs(sum(p["contributions"]) + out["base_value"] - log_odds) < 1e-6
+        values = dict(zip(out["features"], p["values"], strict=True))
+        for f in out["numeric_features"]:
+            assert values[f] is None or isinstance(values[f], float)
         assert len(p["reasons"]) <= 3
         contributions = [r["contribution"] for r in p["reasons"]]
         assert contributions == sorted(contributions, reverse=True)
@@ -185,3 +194,18 @@ def test_training_cut_off_by_a_restart_is_marked_failed(tmp_path):
     row = Store(settings.db_path).get_dataset("abc")
     assert row["status"] == "failed"
     assert row["error"] == INTERRUPTED
+
+
+def test_predict_refuses_files_above_the_row_limit(tmp_path):
+    settings = _settings(tmp_path)
+    settings.max_predict_rows = 10
+    with TestClient(create_app(settings)) as c:
+        up = _upload(c)
+        profile = c.get(f"/api/datasets/{up['id']}", params={"target": "Churn Value"}).json()["profile"]
+        body = {"target": "Churn Value", "features": profile["suggested_features"]}
+        c.post(f"/api/datasets/{up['id']}/train", json=body)
+        c.app.state.trainer.wait()
+        new = pd.read_csv(TELCO).head(11)
+        res = c.post(f"/api/datasets/{up['id']}/predict", files={"file": ("new.csv", _csv(new), "text/csv")})
+        assert res.status_code == 400
+        assert "at most 10" in res.json()["detail"]

@@ -11,10 +11,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from src.churn.data import POSITIVE_TOKENS, PreparedData, _norm_label, normalize_column_name, prepare, read_table
+from src.churn.data import POSITIVE_TOKENS, PreparedData, _norm_label, prepare, read_table
 from src.churn.evaluate import TEST_SET_NOTE, score_test
-from src.churn.explain import global_importance
-from src.churn.predict import predict
+from src.churn.explain import format_value, global_importance, raw_contributions, top_reasons
+from src.churn.predict import check_columns
 from src.churn.stats import curve_points, precision_recall_by_share
 from src.churn.train import ChurnModel, load_model, save_model, train
 
@@ -194,26 +194,49 @@ class Trainer:
         return cached[1]
 
 
+def _feature_values(model: ChurnModel, df: pd.DataFrame) -> list[list]:
+    """Each customer's value per model feature: numbers for numeric features, text for the rest, None if empty."""
+    columns = []
+    for f in model.features:
+        if f in model.numeric:
+            col = pd.to_numeric(df[f], errors="coerce")
+            columns.append([None if pd.isna(v) else float(v) for v in col])
+        else:
+            columns.append([None if format_value(v) == "missing" else format_value(v) for v in df[f]])
+    return [list(row) for row in zip(*columns, strict=True)]
+
+
 def score_file(model: ChurnModel, df: pd.DataFrame, id_column: str | None) -> dict:
-    """Up to 3 reasons per customer: the largest positive contributions, in decreasing order."""
-    out = predict(model, df, k=3, positive_only=True)
-    columns = {normalize_column_name(c): c for c in df.columns}
-    if id_column and id_column in columns:
-        ids = df[columns[id_column]].astype(str).tolist()
+    """Probability, flag, up to 3 reasons (largest positive contributions first), and every feature's
+    contribution and value per customer. Contributions are LightGBM pred_contrib (log-odds); with
+    base_value they add up to the log-odds of the probability."""
+    df = check_columns(model, df)
+    proba = model.predict_proba(df)
+    raw = raw_contributions(model, df)
+    contrib = pd.DataFrame(raw[:, :-1], columns=model.features, index=df.index)
+    reasons = top_reasons(model, df, k=3, positive_only=True, contrib=contrib)
+    values = _feature_values(model, df)
+    if id_column and id_column in df.columns:
+        ids = df[id_column].astype(str).tolist()
     else:
         id_column, ids = None, [str(i + 1) for i in range(len(df))]
     predictions = [
         {
             "id": ids[i],
-            "probability": float(row.churn_probability),
-            "flagged": bool(row.predicted_churn),
-            "reasons": [{k: r[k] for k in ("feature", "value", "contribution")} for r in row.reasons],
+            "probability": float(proba[i]),
+            "flagged": bool(proba[i] >= model.threshold),
+            "reasons": [{k: r[k] for k in ("feature", "value", "contribution")} for r in reasons[i]],
+            "contributions": raw[i, :-1].tolist(),
+            "values": values[i],
         }
-        for i, row in enumerate(out.itertuples(index=False))
+        for i in range(len(df))
     ]
     return {
         "threshold": model.threshold,
         "id_column": id_column,
+        "features": model.features,
+        "numeric_features": model.numeric,
+        "base_value": float(raw[0, -1]) if len(raw) else 0.0,
         "n_rows": len(predictions),
         "n_flagged": sum(p["flagged"] for p in predictions),
         "predictions": predictions,

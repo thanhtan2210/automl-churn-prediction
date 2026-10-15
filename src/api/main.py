@@ -16,6 +16,7 @@ from typing import Annotated
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from src.churn.data import DATASETS, read_table
@@ -222,10 +223,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 raise HTTPException(400, f"Could not read the file: {e}") from e
         if df.empty:
             raise HTTPException(400, "The file has no rows.")
+        if len(df) > settings.max_predict_rows:
+            raise HTTPException(
+                400,
+                f"The file has {len(df):,} rows; this app scores at most {settings.max_predict_rows:,} at a time. "
+                "Split the file into smaller parts.",
+            )
         model = trainer.model(model_row["path"])
         id_columns = [c["name"] for c in (row["profile"] or {}).get("columns", []) if c["role"] == "id"]
         try:
-            return score_file(model, df, next(iter(id_columns), None))
+            result = score_file(model, df, next(iter(id_columns), None))
+            # Plain JSON floats/strings/lists: skip FastAPI's per-item encoder (slow for thousands of rows).
+            return JSONResponse(result)
         except MissingColumnsError as e:
             raise HTTPException(422, {"message": str(e), "missing_columns": e.missing}) from e
 

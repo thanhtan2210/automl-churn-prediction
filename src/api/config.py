@@ -28,6 +28,7 @@ class Settings:
     max_upload_mb: int = 50
     min_rows: int = 200
     min_minority: int = 50
+    max_predict_rows: int = 20_000
 
     @property
     def db_path(self) -> Path:
