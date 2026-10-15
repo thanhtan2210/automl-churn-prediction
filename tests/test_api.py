@@ -197,6 +197,7 @@ def test_training_cut_off_by_a_restart_is_marked_failed(tmp_path):
 
 
 def test_predict_refuses_files_above_the_row_limit(tmp_path):
+    assert Settings().max_predict_rows == 10_000
     settings = _settings(tmp_path)
     settings.max_predict_rows = 10
     with TestClient(create_app(settings)) as c:
@@ -208,4 +209,6 @@ def test_predict_refuses_files_above_the_row_limit(tmp_path):
         new = pd.read_csv(TELCO).head(11)
         res = c.post(f"/api/datasets/{up['id']}/predict", files={"file": ("new.csv", _csv(new), "text/csv")})
         assert res.status_code == 400
-        assert "at most 10" in res.json()["detail"]
+        detail = res.json()["detail"]
+        assert "at most 10 customers per file" in detail
+        assert "this file has 11 rows" in detail

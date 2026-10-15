@@ -226,8 +226,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if len(df) > settings.max_predict_rows:
             raise HTTPException(
                 400,
-                f"The file has {len(df):,} rows; this app scores at most {settings.max_predict_rows:,} at a time. "
-                "Split the file into smaller parts.",
+                f"This app scores at most {settings.max_predict_rows:,} customers per file, and this file has "
+                f"{len(df):,} rows. Split it into smaller files and score them one by one.",
             )
         model = trainer.model(model_row["path"])
         id_columns = [c["name"] for c in (row["profile"] or {}).get("columns", []) if c["role"] == "id"]
