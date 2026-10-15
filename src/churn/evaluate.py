@@ -50,32 +50,13 @@ def _audit_reference(name: str) -> dict | None:
     }
 
 
-def evaluate(name: str, n_trials: int = DEFAULT_TRIALS, timeout: float | None = None) -> dict:
-    t0 = time.perf_counter()
-    data = load_dataset(name)
-    prof = profile_dataset(data)
-    t_profile = time.perf_counter() - t0
-    features = prof["suggested_features"]
+def score_test(model, baseline, X_te, y_te) -> tuple[dict, np.ndarray, np.ndarray]:
+    """Scores LightGBM and the LR baseline once on the test split, with paired bootstrap CIs.
 
-    X_tr, y_tr = data.df.loc[data.train_idx, features], data.y.loc[data.train_idx]
-    X_te, y_te = data.df.loc[data.test_idx, features], data.y.loc[data.test_idx]
-
-    result = train(X_tr, y_tr, target=data.target, positive_label=data.positive_label,
-                   n_trials=n_trials, timeout=timeout, run_name=f"evaluate-{name}")
-    model = result.model
-
-    # Effect of dropping class weights, with the audit's fixed LightGBM settings on this pipeline (CV on train).
-    numeric, categorical = split_columns(X_tr)
-    fixed = {"n_estimators": 300, "learning_rate": 0.05}
-    class_weight_check = {}
-    for label, extra in (("no_class_weight", {}), ("class_weight_balanced", {"class_weight": "balanced"})):
-        scores = cross_val_score(make_lgbm(numeric, categorical, **fixed, **extra), X_tr, y_tr,
-                                 cv=make_cv(), scoring="roc_auc")
-        class_weight_check[label] = {"cv_auc_mean": float(np.mean(scores)), "cv_auc_std": float(np.std(scores))}
-
-    # The only use of the test split.
+    Returns the test metrics and both models' test probabilities.
+    """
     p_lgbm = model.predict_proba(X_te)
-    p_lr = result.baseline.predict_proba(X_te)[:, 1]
+    p_lr = baseline.predict_proba(X_te)[:, 1]
     y = y_te.to_numpy()
     boot = paired_bootstrap(y, p_lgbm, p_lr, n_boot=N_BOOTSTRAP, seed=SEED)
     flagged = p_lgbm >= model.threshold
@@ -104,6 +85,35 @@ def evaluate(name: str, n_trials: int = DEFAULT_TRIALS, timeout: float | None = 
         "pr_auc": test["lightgbm"]["pr_auc"] - test["logistic_regression"]["pr_auc"],
         "pr_auc_ci95": ci95(boot["pr_diff"]),
     }
+
+    return test, p_lgbm, p_lr
+
+
+def evaluate(name: str, n_trials: int = DEFAULT_TRIALS, timeout: float | None = None) -> dict:
+    t0 = time.perf_counter()
+    data = load_dataset(name)
+    prof = profile_dataset(data)
+    t_profile = time.perf_counter() - t0
+    features = prof["suggested_features"]
+
+    X_tr, y_tr = data.df.loc[data.train_idx, features], data.y.loc[data.train_idx]
+    X_te, y_te = data.df.loc[data.test_idx, features], data.y.loc[data.test_idx]
+
+    result = train(X_tr, y_tr, target=data.target, positive_label=data.positive_label,
+                   n_trials=n_trials, timeout=timeout, run_name=f"evaluate-{name}")
+    model = result.model
+
+    # Effect of dropping class weights, with the audit's fixed LightGBM settings on this pipeline (CV on train).
+    numeric, categorical = split_columns(X_tr)
+    fixed = {"n_estimators": 300, "learning_rate": 0.05}
+    class_weight_check = {}
+    for label, extra in (("no_class_weight", {}), ("class_weight_balanced", {"class_weight": "balanced"})):
+        scores = cross_val_score(make_lgbm(numeric, categorical, **fixed, **extra), X_tr, y_tr,
+                                 cv=make_cv(), scoring="roc_auc")
+        class_weight_check[label] = {"cv_auc_mean": float(np.mean(scores)), "cv_auc_std": float(np.std(scores))}
+
+    # The only use of the test split.
+    test, _, _ = score_test(model, result.baseline, X_te, y_te)
 
     model.metrics["test"] = {k: test[k] for k in ("lightgbm", "logistic_regression", "at_threshold_lightgbm")}
     save_model(model, ROOT / "models" / name)

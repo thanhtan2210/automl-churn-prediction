@@ -152,6 +152,7 @@ class TrainResult:
     study: optuna.Study
     metrics: dict
     seconds: dict
+    mlflow_run_id: str | None = None
 
 
 def train(
@@ -219,9 +220,8 @@ def train(
     seconds = {"tune": round(tune_seconds, 1), "train_total": round(time.perf_counter() - t0, 1)}
     model = ChurnModel(lgbm, numeric + categorical, numeric, categorical, threshold,
                        target, positive_label, best, metrics)
-    if mlflow_dir is not None:
-        log_to_mlflow(model, study, metrics, Path(mlflow_dir), run_name)
-    return TrainResult(model, baseline, study, metrics, seconds)
+    run_id = log_to_mlflow(model, study, metrics, Path(mlflow_dir), run_name) if mlflow_dir is not None else None
+    return TrainResult(model, baseline, study, metrics, seconds, run_id)
 
 
 def log_to_mlflow(model: ChurnModel, study: optuna.Study, metrics: dict, mlflow_dir: Path, run_name: str) -> str:

@@ -24,12 +24,17 @@ def check_columns(model: ChurnModel, df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def predict(model: ChurnModel, df: pd.DataFrame, k: int = 3) -> pd.DataFrame:
-    """Returns one row per customer: churn probability, label at the model's threshold, top-k reasons."""
+def predict(
+    model: ChurnModel, df: pd.DataFrame, k: int = 3, positive_only: bool = False, cutoffs: dict | None = None
+) -> pd.DataFrame:
+    """Returns one row per customer: churn probability, label at the model's threshold, top-k reasons.
+
+    ``positive_only`` and ``cutoffs`` are passed to ``explain.top_reasons``.
+    """
     df = check_columns(model, df)
     proba = model.predict_proba(df)
     return pd.DataFrame({
         "churn_probability": proba,
         "predicted_churn": proba >= model.threshold,
-        "reasons": top_reasons(model, df, k=k),
+        "reasons": top_reasons(model, df, k=k, positive_only=positive_only, cutoffs=cutoffs),
     }, index=df.index)

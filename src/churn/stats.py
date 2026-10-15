@@ -1,9 +1,9 @@
-"""Bootstrap confidence intervals shared by the evaluation script and the leakage audit."""
+"""Metric helpers shared by the evaluation script, the API and the leakage audit."""
 
 from __future__ import annotations
 
 import numpy as np
-from sklearn.metrics import average_precision_score, roc_auc_score
+from sklearn.metrics import average_precision_score, precision_recall_curve, roc_auc_score, roc_curve
 
 
 def ci95(values) -> list[float]:
@@ -35,3 +35,21 @@ def paired_bootstrap(y, scores_a, scores_b, n_boot: int = 1000, seed: int = 42) 
         boot["roc_diff"].append(ra - rb)
         boot["pr_diff"].append(pa - pb)
     return boot
+
+
+def _downsample(n: int, max_points: int) -> np.ndarray:
+    if n <= max_points:
+        return np.arange(n)
+    return np.unique(np.linspace(0, n - 1, max_points).round().astype(int))
+
+
+def curve_points(y, proba, max_points: int = 200) -> dict:
+    """ROC and precision-recall curve points, each reduced to at most ``max_points`` (ends kept)."""
+    fpr, tpr, _ = roc_curve(y, proba)
+    precision, recall, _ = precision_recall_curve(y, proba)
+    roc_idx = _downsample(len(fpr), max_points)
+    pr_idx = _downsample(len(recall), max_points)
+    return {
+        "roc": [{"fpr": float(fpr[i]), "tpr": float(tpr[i])} for i in roc_idx],
+        "pr": [{"recall": float(recall[i]), "precision": float(precision[i])} for i in pr_idx],
+    }
