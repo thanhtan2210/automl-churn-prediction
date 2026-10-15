@@ -137,6 +137,7 @@ export interface Dataset {
   status: DatasetStatus;
   error: string | null;
   training_elapsed_seconds: number | null;
+  training_progress: { trials_done: number; trials_total: number } | null;
   target: string | null;
   positive_label: string | null;
   profile: Profile | null;
