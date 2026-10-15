@@ -67,16 +67,26 @@ CSV/XLSX → profile (train split, leakage flags) → LightGBM + Optuna in one P
 
 ## How to run
 
-Python 3.11 and Node 22, from the repo root:
+Python 3.11 and Node 22. Run every command from the repo root.
 
 ```bash
+# 1. Set up once: virtual environment and dependencies
+python -m venv .venv
+source .venv/bin/activate                # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-python -m uvicorn src.api.main:app --port 8000          # API on http://localhost:8000
-cd frontend && npm ci && npm run dev                     # app on http://localhost:3000
-python -m src.churn.evaluate --dataset telco             # re-create reports/metrics_telco.json
+npm --prefix frontend ci
+
+# 2. Terminal 1: API on http://localhost:8000 (keep it running)
+python -m uvicorn src.api.main:app --port 8000
+
+# 3. Terminal 2: web app on http://localhost:3000
+npm --prefix frontend run dev
+
+# Optional: re-create reports/metrics_telco.json
+python -m src.churn.evaluate --dataset telco
 ```
 
-Settings are in `.env.example`. Tests: `pip install -r requirements-dev.txt` then `python -m pytest -q`.
+Activate `.venv` in every terminal that runs Python. Settings are in `.env.example`. Tests: `pip install -r requirements-dev.txt`, then `python -m pytest -q`.
 
 ## Limitations
 
