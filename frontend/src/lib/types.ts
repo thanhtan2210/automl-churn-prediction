@@ -120,6 +120,8 @@ export interface ModelMetrics {
   };
   test: TestMetrics;
   curves: { lightgbm: CurvePoints; logistic_regression: CurvePoints };
+  /** Test-split precision/recall when contacting the top share of customers (absent on models trained before it existed). */
+  contact_curve?: { share: number; precision: number; recall: number }[];
   global_importance_top10: { feature: string; mean_abs_contribution: number }[];
   notes: string[];
   timing_seconds: Record<string, number>;
@@ -174,11 +176,18 @@ export interface Prediction {
   probability: number;
   flagged: boolean;
   reasons: Reason[];
+  /** One per feature, in PredictResponse.features order (model units: log-odds). */
+  contributions: number[];
+  /** One per feature: a number for numeric features, text otherwise, null if empty. */
+  values: (number | string | null)[];
 }
 
 export interface PredictResponse {
   threshold: number;
   id_column: string | null;
+  features: string[];
+  numeric_features: string[];
+  base_value: number;
   n_rows: number;
   n_flagged: number;
   predictions: Prediction[];
