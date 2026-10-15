@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 
 import { FileDrop } from "@/components/file-drop";
 import { HowToRead } from "@/components/how-to-read";
+import { ContactSlider } from "@/components/predict/contact-slider";
 import { KpiStrip } from "@/components/predict/kpi-strip";
 import { RiskHistogram } from "@/components/predict/risk-histogram";
 import { TopReasons } from "@/components/predict/top-reasons";
@@ -15,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api, ApiError } from "@/lib/api";
 import { pct } from "@/lib/format";
-import { quartileEdges, reasonLabels, type Range } from "@/lib/predict-analysis";
+import { quartileEdges, ranks, reasonLabels, type Range } from "@/lib/predict-analysis";
 import { useDataset } from "@/lib/queries";
 import type { ModelMetrics, PredictResponse } from "@/lib/types";
 
@@ -117,22 +118,25 @@ export function PredictView({ id }: { id: string }) {
   );
 }
 
-function PredictResults({ result }: { result: PredictResponse; metrics: ModelMetrics; fileName: string | null }) {
+function PredictResults({ result, metrics }: { result: PredictResponse; metrics: ModelMetrics; fileName: string | null }) {
+  const [topN, setTopN] = useState(result.n_flagged);
+  const rank = useMemo(() => ranks(result.predictions), [result]);
   const [range, setRange] = useState<Range | null>(null);
   const [reason, setReason] = useState<string | null>(null);
   const edges = useMemo(() => quartileEdges(result), [result]);
   const rows = useMemo(() => {
-    let out = result.predictions.map((p, row) => ({ ...p, row })).sort((a, b) => b.probability - a.probability);
+    let out = result.predictions.map((p, row) => ({ ...p, row, rank: rank[row] })).sort((a, b) => a.rank - b.rank);
     if (range) out = out.filter((p) => p.probability >= range[0] && (p.probability < range[1] || range[1] >= 1));
     if (reason) out = out.filter((p) => reasonLabels(p, result, edges).includes(reason));
     return out;
-  }, [result, range, reason, edges]);
+  }, [result, range, reason, edges, rank]);
 
   return (
     <div className="space-y-8">
       <KpiStrip result={result} />
       <RiskHistogram result={result} selected={range} onSelect={setRange} />
       <TopReasons result={result} edges={edges} selected={reason} onSelect={setReason} />
+      <ContactSlider result={result} metrics={metrics} topN={topN} onChange={setTopN} />
       <section className="space-y-3 rounded-2xl border bg-card p-6 shadow-xs">
         <h2 className="text-lg font-semibold">Customers</h2>
         <p className="text-sm text-muted-foreground">{rows.length.toLocaleString()} shown</p>
@@ -140,6 +144,7 @@ function PredictResults({ result }: { result: PredictResponse; metrics: ModelMet
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-20">Rank</TableHead>
                 <TableHead>{result.id_column ?? "Row"}</TableHead>
                 <TableHead className="text-right">Churn risk</TableHead>
                 <TableHead>Status</TableHead>
@@ -148,7 +153,11 @@ function PredictResults({ result }: { result: PredictResponse; metrics: ModelMet
             </TableHeader>
             <TableBody>
               {rows.slice(0, 200).map((p) => (
-                <TableRow key={p.row}>
+                <TableRow key={p.row} className={p.rank <= topN ? "bg-brand-soft/60" : undefined}>
+                  <TableCell className="tabular-nums">
+                    {p.rank}
+                    {p.rank <= topN && <span className="ml-1.5 text-xs font-medium text-primary">top {topN}</span>}
+                  </TableCell>
                   <TableCell className="font-medium">{p.id}</TableCell>
                   <TableCell className="text-right tabular-nums">{pct(p.probability, 1)}</TableCell>
                   <TableCell>{p.flagged ? "Flagged" : "Not flagged"}</TableCell>
