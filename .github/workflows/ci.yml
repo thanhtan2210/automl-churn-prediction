@@ -6,8 +6,10 @@ on:
 
 jobs:
   test:
-    name: Lint and test (Python 3.11)
+    name: Python lint and test (3.11)
     runs-on: ubuntu-latest
+    env:
+      CHURN_N_TRIALS: "3"
 
     steps:
       - uses: actions/checkout@v4
@@ -30,3 +32,28 @@ jobs:
 
       - name: Test
         run: python -m pytest -q
+
+  frontend:
+    name: Frontend lint and build (Node 22)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
