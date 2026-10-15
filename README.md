@@ -63,11 +63,11 @@ CSV/XLSX → profile (train split, leakage flags) → LightGBM + Optuna in one P
 2. **Profile.** Each column gets a role (id, constant, numeric, categorical, datetime) and flags, all measured on the training split: *target copy* / *likely leakage* (a model on that column alone is too good), *missing reveals target*, *location*, and a *check timing* question for names like `score` or `reason`. Flagged columns are unticked by default.
 3. **Train.** One LightGBM, tuned by Optuna on 5-fold CV of the training split, and a logistic-regression baseline. Every learned step is inside the `Pipeline`, so the saved model scores raw uploaded columns. No resampling or calibration, so the probabilities shown are the model's own.
 4. **Evaluate once** on the test split, with paired bootstrap CIs for both models and their difference.
-5. **Predict.** Each customer gets a probability, a flag at the F1 threshold chosen on training data, and up to three reasons from LightGBM's `pred_contrib`, listed from the strongest push upwards.
+5. **Predict.** Each customer gets a probability, a flag at the F1 threshold chosen on training data, and up to three reasons from LightGBM's `pred_contrib`, listed from the strongest push upwards. The page also shows how risk is spread, the most common reasons, a breakdown by customer group, a "how many can you contact" slider whose estimate comes from the test split, and a side panel with every column's effect for one customer.
 
-| Upload | Profile | Model |
-|---|---|---|
-| ![Upload](docs/images/01_upload.png) | ![Profile](docs/images/02_profile.png) | ![Model](docs/images/03_model.png) |
+| Upload | Profile | Model | Customer detail |
+|---|---|---|---|
+| ![Upload](docs/images/01_upload.png) | ![Profile](docs/images/02_profile.png) | ![Model](docs/images/03_model.png) | ![Customer detail](docs/images/05_customer_detail.png) |
 
 **Stack:** pandas + scikit-learn · LightGBM + Optuna · MLflow (local `./mlruns`) · FastAPI + SQLite · Next.js (Tailwind, shadcn/ui, TanStack Query, Recharts) · GitHub Actions
 
