@@ -82,6 +82,9 @@ def profile_column(s: pd.Series, y: pd.Series) -> dict:
         "dtype": str(s.dtype),
         "n_unique": int(s.nunique(dropna=True)),
         "missing_rate": float(missing.mean()),
+        # Descriptive only (used to explain flags in the UI); flags do not depend on these.
+        "missing_rate_churned": float(missing[y.to_numpy() == 1].mean()),
+        "missing_rate_stayed": float(missing[y.to_numpy() == 0].mean()),
         "single_column_auc": None,
         "missing_indicator_auc": None,
         "flags": [],
