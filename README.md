@@ -2,9 +2,7 @@
 
 Upload a list of telecom subscribers and find out who is likely to cancel — and why.
 
-![Predict page: churn probability and top reasons per customer](docs/images/04_predict.png)
-
-<!-- Demo GIF goes here: docs/images/demo.gif -->
+![Demo: upload, leakage check, training, scoring and a customer's reasons](docs/images/demo.gif)
 
 ## Problem → Approach → Results
 
@@ -65,9 +63,9 @@ CSV/XLSX → profile (train split, leakage flags) → LightGBM + Optuna in one P
 4. **Evaluate once** on the test split, with paired bootstrap CIs for both models and their difference.
 5. **Predict.** Each customer gets a probability, a flag at the F1 threshold chosen on training data, and up to three reasons from LightGBM's `pred_contrib`, listed from the strongest push upwards. The page also shows how risk is spread, the most common reasons, a breakdown by customer group, a "how many can you contact" slider whose estimate comes from the test split, and a side panel with every column's effect for one customer.
 
-| Upload | Profile | Model | Customer detail |
-|---|---|---|---|
-| ![Upload](docs/images/01_upload.png) | ![Profile](docs/images/02_profile.png) | ![Model](docs/images/03_model.png) | ![Customer detail](docs/images/05_customer_detail.png) |
+| Upload | Profile | Model | Predict | Customer detail |
+|---|---|---|---|---|
+| ![Upload](docs/images/01_upload.png) | ![Profile](docs/images/02_profile.png) | ![Model](docs/images/03_model.png) | ![Predict](docs/images/04_predict.png) | ![Customer detail](docs/images/05_customer_detail.png) |
 
 **Stack:** pandas + scikit-learn · LightGBM + Optuna · MLflow (local `./mlruns`) · FastAPI + SQLite · Next.js (Tailwind, shadcn/ui, TanStack Query, Recharts) · GitHub Actions
 
