@@ -15,7 +15,7 @@ from src.churn.data import POSITIVE_TOKENS, PreparedData, _norm_label, normalize
 from src.churn.evaluate import TEST_SET_NOTE, score_test
 from src.churn.explain import global_importance
 from src.churn.predict import predict
-from src.churn.stats import curve_points
+from src.churn.stats import curve_points, precision_recall_by_share
 from src.churn.train import ChurnModel, load_model, save_model, train
 
 from .config import Settings
@@ -115,6 +115,8 @@ def train_and_score(data: PreparedData, features: list[str], settings: Settings,
         "training": result.metrics,
         "test": test,
         "curves": {"lightgbm": curve_points(y, p_lgbm), "logistic_regression": curve_points(y, p_lr)},
+        # For the Predict page's "how many can you contact" estimate (LightGBM, test split).
+        "contact_curve": precision_recall_by_share(y, p_lgbm),
         "global_importance_top10": global_importance(result.model, X_tr)[:10],
         "notes": [RETRAIN_NOTE, TEST_SET_NOTE],
         "timing_seconds": {**result.seconds, "total": round(time.perf_counter() - t0, 1)},

@@ -53,3 +53,21 @@ def curve_points(y, proba, max_points: int = 200) -> dict:
         "roc": [{"fpr": float(fpr[i]), "tpr": float(tpr[i])} for i in roc_idx],
         "pr": [{"recall": float(recall[i]), "precision": float(precision[i])} for i in pr_idx],
     }
+
+
+def precision_recall_by_share(y, proba, n_points: int = 200) -> list[dict]:
+    """Precision and recall when contacting the top share of customers, ranked by probability.
+
+    For share = i / n_points (i = 1..n_points) the top ceil(share * n) customers are "contacted";
+    precision = leavers among them / contacted, recall = leavers among them / all leavers.
+    """
+    y = np.asarray(y)
+    order = np.argsort(-np.asarray(proba), kind="mergesort")
+    hits = np.cumsum(y[order])
+    n, total = len(y), max(int(y.sum()), 1)
+    out = []
+    for i in range(1, n_points + 1):
+        share = i / n_points
+        k = max(1, int(np.ceil(share * n)))
+        out.append({"share": share, "precision": float(hits[k - 1] / k), "recall": float(hits[k - 1] / total)})
+    return out

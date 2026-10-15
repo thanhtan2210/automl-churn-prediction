@@ -61,6 +61,8 @@ def test_full_flow_upload_profile_train_predict(client):
         assert 2 <= len(metrics["curves"][model]["pr"]) <= 200
     assert len(metrics["global_importance_top10"]) <= 10
     assert any("optimistic" in n for n in metrics["notes"])
+    assert len(metrics["contact_curve"]) == 200
+    assert metrics["contact_curve"][-1]["recall"] == 1.0
 
     new = pd.read_csv(TELCO).drop(columns=["Churn Value", "Churn Label"]).head(40)
     res = client.post(f"/api/datasets/{up['id']}/predict", files={"file": ("new.csv", _csv(new), "text/csv")})
