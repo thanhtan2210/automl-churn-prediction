@@ -208,7 +208,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post("/api/datasets/{dataset_id}/predict")
     def predict_file(dataset_id: str, file: Annotated[UploadFile, File()]):
-        """Score a file of customers: probability, flag at the model's threshold, up to 3 reasons each."""
+        """Score a file of customers: probability, flag at the threshold, up to 3 reasons each (largest first)."""
         row = get_row(dataset_id)
         model_row = store.get_model(dataset_id)
         if model_row is None:
@@ -224,7 +224,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         model = trainer.model(model_row["path"])
         id_columns = [c["name"] for c in (row["profile"] or {}).get("columns", []) if c["role"] == "id"]
         try:
-            return score_file(model, df, model_row["metrics"]["strength_cutoffs"], next(iter(id_columns), None))
+            return score_file(model, df, next(iter(id_columns), None))
         except MissingColumnsError as e:
             raise HTTPException(422, {"message": str(e), "missing_columns": e.missing}) from e
 

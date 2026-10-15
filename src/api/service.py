@@ -13,7 +13,7 @@ import pandas as pd
 
 from src.churn.data import POSITIVE_TOKENS, PreparedData, _norm_label, normalize_column_name, prepare, read_table
 from src.churn.evaluate import TEST_SET_NOTE, score_test
-from src.churn.explain import global_importance, strength_cutoffs
+from src.churn.explain import global_importance
 from src.churn.predict import predict
 from src.churn.stats import curve_points
 from src.churn.train import ChurnModel, load_model, save_model, train
@@ -115,7 +115,6 @@ def train_and_score(data: PreparedData, features: list[str], settings: Settings,
         "test": test,
         "curves": {"lightgbm": curve_points(y, p_lgbm), "logistic_regression": curve_points(y, p_lr)},
         "global_importance_top10": global_importance(result.model, X_tr)[:10],
-        "strength_cutoffs": strength_cutoffs(result.model, X_tr),
         "notes": [RETRAIN_NOTE, TEST_SET_NOTE],
         "timing_seconds": {**result.seconds, "total": round(time.perf_counter() - t0, 1)},
     }
@@ -180,8 +179,9 @@ class Trainer:
         return cached[1]
 
 
-def score_file(model: ChurnModel, df: pd.DataFrame, cutoffs: dict, id_column: str | None) -> dict:
-    out = predict(model, df, k=3, positive_only=True, cutoffs=cutoffs)
+def score_file(model: ChurnModel, df: pd.DataFrame, id_column: str | None) -> dict:
+    """Up to 3 reasons per customer: the largest positive contributions, in decreasing order."""
+    out = predict(model, df, k=3, positive_only=True)
     columns = {normalize_column_name(c): c for c in df.columns}
     if id_column and id_column in columns:
         ids = df[columns[id_column]].astype(str).tolist()
@@ -192,7 +192,7 @@ def score_file(model: ChurnModel, df: pd.DataFrame, cutoffs: dict, id_column: st
             "id": ids[i],
             "probability": float(row.churn_probability),
             "flagged": bool(row.predicted_churn),
-            "reasons": [{k: r[k] for k in ("feature", "value", "strength", "contribution")} for r in row.reasons],
+            "reasons": [{k: r[k] for k in ("feature", "value", "contribution")} for r in row.reasons],
         }
         for i, row in enumerate(out.itertuples(index=False))
     ]

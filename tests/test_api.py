@@ -73,9 +73,11 @@ def test_full_flow_upload_profile_train_predict(client):
         assert 0 <= p["probability"] <= 1
         assert p["flagged"] == (p["probability"] >= out["threshold"])
         assert len(p["reasons"]) <= 3
+        contributions = [r["contribution"] for r in p["reasons"]]
+        assert contributions == sorted(contributions, reverse=True)
         for r in p["reasons"]:
             assert r["contribution"] > 0
-            assert r["strength"] in ("strong", "moderate", "slight")
+            assert set(r) == {"feature", "value", "contribution"}
             assert r["feature"] in features
 
 

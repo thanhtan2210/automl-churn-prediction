@@ -15,27 +15,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { api, ApiError } from "@/lib/api";
 import { num, pct } from "@/lib/format";
 import { useDataset } from "@/lib/queries";
-import type { PredictResponse, Reason, Strength } from "@/lib/types";
-import { cn } from "@/lib/utils";
-
-const STRENGTH_STYLE: Record<Strength, string> = {
-  strong: "border-red-200 bg-red-50 text-red-800",
-  moderate: "border-amber-200 bg-amber-50 text-amber-800",
-  slight: "border-border bg-muted text-muted-foreground",
-};
+import type { PredictResponse, Reason } from "@/lib/types";
 
 function ReasonChip({ reason }: { reason: Reason }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs",
-        STRENGTH_STYLE[reason.strength],
-      )}
-    >
-      <span>
-        {reason.feature} = {reason.value}
-      </span>
-      <span className="font-medium">{reason.strength}</span>
+    <span className="inline-flex items-center rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-800">
+      {reason.feature} = {reason.value}
     </span>
   );
 }
@@ -54,7 +39,7 @@ function downloadCsv(result: PredictResponse, filename: string) {
       p.flagged,
       ...[0, 1, 2].map((i) => {
         const r = p.reasons[i];
-        return r ? `${r.feature} = ${r.value} (${r.strength})` : "";
+        return r ? `${r.feature} = ${r.value}` : "";
       }),
     ]
       .map(csvCell)
@@ -145,7 +130,7 @@ export function PredictView({ id }: { id: string }) {
             </CardTitle>
             <CardDescription>
               Flagged = churn probability at or above the model&apos;s threshold ({num(result.threshold, 2)}). Reasons
-              are the columns that push this customer&apos;s risk up the most.
+              are the columns that push this customer&apos;s risk up the most, strongest first.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

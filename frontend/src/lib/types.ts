@@ -119,7 +119,6 @@ export interface ModelMetrics {
   test: TestMetrics;
   curves: { lightgbm: CurvePoints; logistic_regression: CurvePoints };
   global_importance_top10: { feature: string; mean_abs_contribution: number }[];
-  strength_cutoffs: { moderate: number; strong: number };
   notes: string[];
   timing_seconds: Record<string, number>;
 }
@@ -161,12 +160,9 @@ export interface TrainResponse {
   n_trials: number;
 }
 
-export type Strength = "strong" | "moderate" | "slight";
-
 export interface Reason {
   feature: string;
   value: string;
-  strength: Strength;
   contribution: number;
 }
 
