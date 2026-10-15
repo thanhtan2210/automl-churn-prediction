@@ -9,8 +9,8 @@ __pycache__/
 htmlcov/
 
 # Data & Models
-data/
-!data/dataset/catalog.yaml
+# App storage (SQLite DB, uploads, per-dataset models); raw data and samples are committed
+data/app/
 mlruns/
 mlruns_test/
 mlruns_audit/
