@@ -1,247 +1,96 @@
-# Scalable Customer Data Platform (CDP)
+# Churn Predictor
 
-[![CDP Pipeline CI](https://github.com/thanhtan2210/Scalable-Customer-Data-Platform-CDP/actions/workflows/ci.yml/badge.svg)](https://github.com/thanhtan2210/Scalable-Customer-Data-Platform-CDP/actions/workflows/ci.yml)
-![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688.svg)](https://fastapi.tiangolo.com)
-[![Next.js 14](https://img.shields.io/badge/Next.js-14.x-black.svg)](https://nextjs.org)
-[![MLflow Tracking](https://img.shields.io/badge/MLflow-2.0%2B-0194E2.svg)](https://mlflow.org)
-[![DagsHub](https://img.shields.io/badge/DagsHub-Registry-0052CC.svg)](https://dagshub.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+Upload a list of telecom subscribers and find out who is likely to cancel — and why.
 
-An enterprise-grade, full-stack **Customer Data Platform (CDP)** built for scalable customer data ingestion, automated statistical/semantic data profiling, robust multi-model **AutoML** with automatic class-imbalance correction, multi-task deep learning, real-time drift monitoring, and batch prediction serving.
+![Predict page: churn probability and top reasons per customer](docs/images/04_predict.png)
 
----
+<!-- Demo GIF goes here: docs/images/demo.gif -->
 
-## 🌟 Key Capabilities
+## Problem → Approach → Results
 
-- **🔍 3-Layer Automated Data Profiler**: Statistical distribution analysis, regex-based semantic role inference (ID, Target, Categorical, Numerical, Text), and feature leakage detection.
-- **⚡ High-Performance AutoML Engine**: Optuna-driven hyperparameter optimization across **LightGBM**, **CatBoost**, **XGBoost**, and **Random Forest** with MedianPruning and post-search Stacking meta-learners.
-- **⚖️ Automated Class Imbalance Resolution**: Dynamic **SMOTE** / **SMOTENC** synthesis for imbalanced classification tasks ($<30\%$ or $>70\%$ target ratio), with leakage-free pipeline isolation (`fit` strictly on training folds).
-- **🔬 Generic Feature Engineering**: Automated generation of non-linear interaction terms, pairwise ratios ($A / (|B| + \epsilon)$), and `log1p` transformations based on target-correlation scoring.
-- **🎯 Probability Calibration**: Out-of-fold probability calibration using `CalibratedClassifierCV` (Isotonic regression for $N \ge 1,000$, Sigmoidal for $N < 1,000$).
-- **🧠 Multi-Task Learning (MTL)**: PyTorch-based shared backbone simultaneously optimizing for Churn Classification and Customer Performance Index (CPI) regression with Continual Learning.
-- **📈 MLOps & Real-time Drift Detection**: DagsHub MLflow experiment tracking, automated model registry versioning, thread-safe model caching, and Kolmogorov-Smirnov / PSI drift checks.
-- **💻 Modern Full-Stack Architecture**: Async FastAPI backend paired with a responsive Next.js dashboard for interactive data exploration, job tracking, and model management.
+<!-- summary:start -->
+- **Problem.** The original AutoML pipeline reported ROC-AUC **0.999** on IBM Telco. Three columns leak the answer (`Churn Reason`, `Churn Score`, `Churn Label`), and SMOTE ran before cross-validation.
+- **Approach.** Profile every column on the training split only and flag leaks by single-column AUC and missingness; keep all learned steps in one scikit-learn `Pipeline`; tune one LightGBM with Optuna by CV on train; compare it with a logistic-regression baseline on a test split scored once, with bootstrap CIs.
+- **Results.** IBM Telco: LightGBM **0.859** [0.837, 0.879] vs LR 0.849 [0.825, 0.870], a small edge of +0.010 [0.003, 0.017]. UCI Iranian: LightGBM **0.988** vs LR 0.927.
+- Sources: `reports/legacy_repro_telco.json`, `reports/leakage_audit_telco.json`, `reports/metrics_telco.json`, `reports/metrics_iranian.json`.
+<!-- summary:end -->
 
----
+## Results
 
-## 🏆 Multi-Industry AutoML Benchmark
+<!-- results:start -->
+**1. Removing leakage on IBM Telco** (fixed LightGBM unless noted; *reported* is what the old protocol would show, CV AUC from the drop rows on).
 
-The CDP AutoML pipeline was evaluated across **8 real-world public datasets** from the UCI Machine Learning Repository and academic benchmarks spanning multiple domains. With automated SMOTE, generic feature engineering, and probability calibration enabled, **7 out of 8 datasets achieved $>91\%$ to $99\%$ ROC-AUC**.
+| Step | Reported AUC | Test ROC-AUC |
+|---|---:|---:|
+| Legacy pipeline as shipped (its own code, 10 Optuna trials) | 0.999 | 0.993 |
+| Same protocol, fixed LightGBM (all leaks, SMOTE before CV) | 1.000 | 1.000 |
+| Drop `Churn Reason` | 0.982 | 0.980 |
+| Drop `Churn Score` and `CLTV`, SMOTE still in the CV pipeline | 0.849 | 0.841 |
+| Clean features, SMOTE **before** CV (for comparison) | 0.928 | 0.841 |
+| No SMOTE, `class_weight='balanced'` | 0.848 | 0.841 |
 
-| Wave | Domain / Industry | Dataset | Rows | Columns | Winner Model | Best CV ROC-AUC | Status |
-|:---:|:---|:---|:---:|:---:|:---|:---:|:---:|
-| **Wave 1** | **HR / People Analytics** | **IBM HR Employee Attrition** | 1,470 | 35 | `RandomForestClassifier` | **96.09%** | ✅ PASS |
-| **Wave 1** | **Fitness & Wellness** | **Gym Model Fitness Churn** | 4,000 | 14 | `CatBoostClassifier` | **98.84%** (CV: 99.53%) | ✅ PASS 🔥 |
-| **Wave 1** | **Telecommunications** | **Telecom Churn Iran (UCI #563)** | 3,150 | 14 | `CatBoostClassifier` | **99.16%** (CV: 99.51%) | ✅ PASS 🔥 |
-| **Wave 2** | **E-Commerce / Retail** | **Online Shoppers Intention (UCI #468)** | 12,330 | 18 | `XGBClassifier` | **98.27%** | ✅ PASS 🔥 |
-| **Wave 3** | **Demographics / Census** | **Adult Income Census (UCI #2)** | 32,561 | 15 | `LGBMClassifier` | **96.63%** | ✅ PASS 🔥 |
-| **Wave 3** | **Banking / Direct Marketing** | **Bank Marketing Full (UCI #222)** | 45,211 | 17 | `LGBMClassifier` | **98.90%** | ✅ PASS 🔥 |
-| **Wave 3** | **Credit Risk / Finance** | **Credit Card Default (UCI #350)** | 30,000 | 24 | `XGBClassifier` | **91.82%** | ✅ PASS 🔥 |
-| **Wave 3** | **Healthcare Operations** | **Medical Appointment No-Show** | 110,527 | 10 | `CatBoostClassifier` | **66.76%** | ⚠️ EXPECTED |
+Generated by `scripts/audit/legacy_repro.py` (first row) and `python -m scripts.audit.leakage_audit --dataset telco` (other rows; full ladder in `docs/cleanup/leakage_audit.md`). The audit also dropped `CLTV`; the final profiler keeps it because it is not flagged (see Limitations).
 
-> **Note on Healthcare No-Show**: Medical appointment no-show prediction has a well-documented natural performance ceiling ($\approx 65\text{--}72\%$ ROC-AUC) due to unobserved external factors (weather disruptions, sudden transit issues, acute health changes). A score of 66.76% aligns directly with published state-of-the-art benchmarks on this dataset.
+**2. Clean results on the held-out test split** (95% bootstrap CIs, 1,000 paired resamples).
 
----
+| Dataset (test rows, churn rate) | Model | ROC-AUC | PR-AUC | Threshold | Precision / recall |
+|---|---|---|---|---:|---|
+| IBM Telco (1,409, 27%) | LightGBM (Optuna) | 0.859 [0.837, 0.879] | 0.668 [0.614, 0.721] | 0.26 | 53% / 80% |
+| | Logistic regression | 0.849 [0.825, 0.870] | 0.644 [0.588, 0.699] | | |
+| | Difference (paired) | +0.010 [0.003, 0.017] | +0.024 [0.007, 0.040] | | |
+| UCI Iranian (570, 16%) | LightGBM (Optuna) | 0.988 [0.978, 0.995] | 0.951 [0.920, 0.978] | 0.23 | 81% / 92% |
+| | Logistic regression | 0.927 [0.899, 0.949] | 0.760 [0.677, 0.831] | | |
+| | Difference (paired) | +0.061 [0.041, 0.088] | +0.191 [0.131, 0.259] | | |
 
-## 📊 Standardized Dataset Catalog
+Generated by `python -m src.churn.evaluate --dataset telco|iranian` (`reports/metrics_*.json`). The threshold maximises F1 on out-of-fold training predictions; precision/recall are for LightGBM on the test split.
+<!-- results:end -->
 
-All benchmark datasets are cataloged in `data/dataset/catalog.yaml` with standardized schemas, target definitions, and domain tags:
-
-1. **IBM HR Employee Attrition** (`ibm_hr_attrition`):
-   - **Source**: IBM Watson Analytics / Kaggle
-   - **Characteristics**: 1,470 employee records with 35 workplace attributes (job satisfaction, overtime, monthly income, tenure).
-   - **Target**: `Attrition` (`Yes` = 1, `No` = 0; 16.1% attrition rate).
-2. **Gym Model Fitness Churn** (`gym_model_fitness`):
-   - **Source**: Model Fitness Analytics Research
-   - **Characteristics**: 4,000 fitness club members with visit frequency, additional service usage, group session participation, and contract lengths.
-   - **Target**: `Churn` (0/1; 26.5% churn rate).
-3. **Telecom Churn Iran** (`telecom_iran`):
-   - **Source**: UCI Machine Learning Repository #563
-   - **Characteristics**: 3,150 telecommunication subscribers over 9 months with call failure rates, charge amounts, and complaint logs.
-   - **Target**: `Churn` (0/1; 15.9% churn rate).
-4. **Online Shoppers Purchasing Intention** (`online_shoppers`):
-   - **Source**: UCI Machine Learning Repository #468
-   - **Characteristics**: 12,330 e-commerce browsing sessions with numerical duration/page values, bounce rates, exit rates, and administrative metrics.
-   - **Target**: `Revenue` (`True` = 1, `False` = 0; 15.5% conversion rate).
-5. **Adult Income Census** (`adult_income`):
-   - **Source**: UCI Machine Learning Repository #2 (1994 US Census Database)
-   - **Characteristics**: 32,561 records with demographic and employment features (education level, occupation, capital gains, working hours).
-   - **Target**: `income` (`>50K` = 1, `<=50K` = 0; 24.1% high-income rate).
-6. **Bank Marketing Full** (`bank_marketing_downloaded`):
-   - **Source**: UCI Machine Learning Repository #222 (Portuguese Banking Institution)
-   - **Characteristics**: 45,211 direct marketing phone contacts assessing term deposit subscriptions across macroeconomic indicators.
-   - **Target**: `y` (`yes` = 1, `no` = 0; 11.7% subscription rate).
-7. **Credit Card Default** (`credit_card_default`):
-   - **Source**: UCI Machine Learning Repository #350 (Taiwan Credit Clients)
-   - **Characteristics**: 30,000 credit card holders with 6-month historical repayment statuses, bill amounts, and previous payments.
-   - **Target**: `Y` (Default payment next month: 0/1; 22.1% default rate).
-8. **Medical Appointment No-Show** (`healthcare_noshow`):
-   - **Source**: Kaggle Medical Records / Brazil Public Health
-   - **Characteristics**: 110,527 medical consultations across municipal clinics with SMS reminders, scholarship aid, and chronic condition indicators.
-   - **Target**: `No-show` (`Yes` = 1, `No` = 0; 20.2% no-show rate).
-
----
-
-## 🏗 System Architecture
-
-```mermaid
-graph TD
-    subgraph UI ["Frontend (Next.js 14)"]
-        A[Dashboard / Analytics]
-        B[Dataset Manager]
-        C[Model Registry & Predict UI]
-    end
-
-    subgraph API ["API Gateway (FastAPI)"]
-        D[REST Endpoints /api/v1]
-        D1[Auth & Rate Limiting]
-        D2[Async Job Orchestrator]
-    end
-
-    subgraph CORE ["Core Processing Engine"]
-        E[3-Layer Data Profiler]
-        F[Auto-SMOTE & Preprocessing Pipeline]
-        G[AutoML Engine - Optuna Search]
-        H[Multi-Task PyTorch Trainer]
-        I[Model Serving & Drift Detector]
-    end
-
-    subgraph STORAGE ["Storage & MLOps"]
-        J[(PostgreSQL / SQLite)]
-        K[(Cloudflare R2 / S3 / Local)]
-        L[(DagsHub MLflow Registry)]
-    end
-
-    UI -->|HTTP / JSON| API
-    API --> D1 --> D2
-    D2 --> E
-    D2 --> F --> G --> L
-    D2 --> H --> L
-    API --> I --> L
-    API --> J
-    CORE --> K
-```
-
-Detailed architectural blueprints are maintained in [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md).
-
----
-
-## 📁 Repository Structure
+## How it works
 
 ```
-Scalable-Customer-Data-Platform-CDP/
-├── backend/app/
-│   ├── api/v1/          # REST API endpoints (auth, datasets, jobs, models, predict, monitoring)
-│   ├── core/
-│   │   ├── etl/         # Data cleaning, schema normalization, SLA checks
-│   │   ├── profiler/    # 3-layer statistical & semantic profiler, leakage detector
-│   │   ├── pipeline/    # Scikit-learn preprocessing pipelines & Pandera schemas
-│   │   ├── training/    # AutoML router (Optuna, SMOTE, Calibration, Stacking) & MTL
-│   │   └── serving/     # Thread-safe prediction cache & drift detection (KS, PSI)
-│   └── db/              # SQLAlchemy ORM models, database sessions & migrations
-├── frontend/src/
-│   ├── app/             # Next.js 14 App Router (dashboard, datasets, jobs, models)
-│   ├── components/      # UI components (Shadcn/UI, Tailwind, charts)
-│   └── lib/             # API client, state management & utility functions
-├── data/
-│   └── dataset/         # Multi-industry dataset catalog (catalog.yaml) & raw files
-├── docs/                # Architecture diagrams, ablation studies & user guides
-├── scripts/             # End-to-end integration tests & benchmark runners
-├── tests/               # Multi-layer test suite (unit, integration, e2e, phase1-3)
-├── docker-compose.yml   # Multi-service deployment stack
-└── requirements.txt     # Python dependencies
+CSV/XLSX → profile (train split, leakage flags) → LightGBM + Optuna in one Pipeline vs LR baseline → test once → reasons via pred_contrib
 ```
 
----
+1. **Upload** a file (or try a bundled sample). Rows that are exact duplicates are removed, then the data is split 80/20 (stratified, seed 42).
+2. **Profile.** Each column gets a role (id, constant, numeric, categorical, datetime) and flags, all measured on the training split: *target copy* / *likely leakage* (a model on that column alone is too good), *missing reveals target*, *location*, and a *check timing* question for names like `score` or `reason`. Flagged columns are unticked by default.
+3. **Train.** One LightGBM, tuned by Optuna on 5-fold CV of the training split, and a logistic-regression baseline. Every learned step is inside the `Pipeline`, so the saved model scores raw uploaded columns. No resampling or calibration, so the probabilities shown are the model's own.
+4. **Evaluate once** on the test split, with paired bootstrap CIs for both models and their difference.
+5. **Predict.** Each customer gets a probability, a flag at the F1 threshold chosen on training data, and up to three reasons from LightGBM's `pred_contrib` (labelled strong / moderate / slight).
 
-## 🚀 Quick Start
+| Upload | Profile | Model |
+|---|---|---|
+| ![Upload](docs/images/01_upload.png) | ![Profile](docs/images/02_profile.png) | ![Model](docs/images/03_model.png) |
 
-### 1. Prerequisites & Environment Setup
+**Stack:** pandas + scikit-learn · LightGBM + Optuna · MLflow (local `./mlruns`) · FastAPI + SQLite · Next.js (Tailwind, shadcn/ui, TanStack Query, Recharts) · GitHub Actions
 
-Ensure **Python 3.10+** and **Node.js 18+** are installed:
+**Data:** [IBM Telco Customer Churn](data/raw/README.md) (IBM Cognos Analytics sample, no published license) and [UCI Iranian Churn](data/raw/iranian_churn/SOURCE.md) (CC BY 4.0). `data/samples/*_new_customers.csv` are customers from the **test split** (never used for training), for trying the Predict page.
+
+## How to run
+
+Python 3.11 and Node 22, from the repo root:
 
 ```bash
-# Clone the repository
-git clone https://github.com/thanhtan2210/Scalable-Customer-Data-Platform-CDP.git
-cd Scalable-Customer-Data-Platform-CDP
-
-# Create and activate Python virtual environment
-python -m venv .venv
-# On Windows PowerShell:
-.\.venv\Scripts\Activate.ps1
-# On Linux/macOS:
-# source .venv/bin/activate
-
-# Install backend dependencies
 pip install -r requirements.txt
+python -m uvicorn src.api.main:app --port 8000          # API on http://localhost:8000
+cd frontend && npm ci && npm run dev                     # app on http://localhost:3000
+python -m src.churn.evaluate --dataset telco             # re-create reports/metrics_telco.json
 ```
 
-### 2. Configure Environment
+Settings are in `.env.example`. Tests: `pip install -r requirements-dev.txt` then `python -m pytest -q`.
 
-Copy the example environment configuration:
+## Limitations
 
-```bash
-cp .env.example .env
-```
+<!-- limitations:start -->
+- **The Telco test split was seen before.** Phase 1 of the cleanup scored the same split (same seed); no Phase 2 choice used test numbers, but the split is not pristine.
+- **IBM Telco is fictional sample data** from IBM Cognos Analytics with no published license; it is used for learning only.
+- **`CLTV` is kept** because the profiler does not flag it (single-column AUC 0.56), but it is a value IBM computed, not a raw attribute.
+- **UCI Iranian is thinly documented**: 300 exact duplicate rows (removed), and 14 groups of rows with identical features but different labels. Its very high AUC has no single leaking column (`docs/cleanup/leakage_audit.md`).
+- **The profiler only catches statistical leakage.** It cannot know when a column was recorded (for example the call `duration` in UCI Bank Marketing is only known after the call); the timing question in the UI is a prompt, not a check.
+- **The F1 threshold flags many customers**: 566 of 1,409 Telco test customers (40%). A retention team with a fixed budget would pick its own cut-off.
+- **Tuning hit an edge of the search space** on Telco (`min_child_samples` = 198, range 20–200), so a wider range might change the model slightly.
+- **Not done:** the Cell2Cell dataset; one user, no authentication, no deployment.
+<!-- limitations:end -->
 
-*(The default configuration runs out-of-the-box using local SQLite and filesystem storage — no cloud credentials required for local development).*
+## Authors
 
-### 3. Launch Backend API Server
-
-Start the FastAPI application:
-
-```bash
-uvicorn backend.app.main:app --reload --port 8000
-```
-
-- **Interactive API Documentation (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
-- **Alternative Redoc Documentation**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
-
-### 4. Launch Frontend Dashboard
-
-In a separate terminal:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-- **Web Dashboard**: [http://localhost:3000](http://localhost:3000)
-
----
-
-## 🧪 Testing & Verification
-
-Run the automated test suites using `pytest`:
-
-```bash
-# Run all unit tests
-pytest tests/unit/ -v
-
-# Run integration tests
-pytest tests/integration/ -v
-
-# Run End-to-End pipeline tests across all verified datasets
-pytest tests/e2e/ -v
-
-# Run full multi-industry benchmark validation
-python scripts/test_datasets_e2e.py --layer 4 --dataset all
-```
-
----
-
-## 📚 Documentation & Technical Guides
-
-- 📐 **[System Architecture](docs/architecture/ARCHITECTURE.md)** — In-depth component design, state machines, and data contracts.
-- 🤖 **[AutoML & Training Engine Guide](docs/guides/automl.md)** — Hyperparameter optimization, search spaces, SMOTE, and calibration strategy.
-- 🔬 **[Ablation Study & Benchmark Analysis](docs/ablation_study_analysis.md)** — Detailed ablation studies comparing baseline vs. optimized pipelines.
-- 🧪 **[End-to-End Testing Guide](docs/guides/e2e_testing.md)** — Multi-layer testing strategy and automated verification workflows.
-- 📥 **[Adding New Datasets Guide](docs/guides/adding_datasets.md)** — Step-by-step instructions for registering new domain datasets into the catalog.
-
----
-
-## 📝 License
-
-Distributed under the **MIT License**. See `LICENSE` for more information.
+Phan Thanh Tấn. The cleanup history of this repository (inventory of the old code, leakage audit) is in [`docs/cleanup/`](docs/cleanup/).
