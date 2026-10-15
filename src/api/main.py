@@ -177,6 +177,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "status": row["status"],
             "error": row["error"],
             "training_elapsed_seconds": elapsed,
+            "training_progress": trainer.progress(dataset_id) if row["status"] == "training" else None,
             "target": row["target"],
             "positive_label": row["positive_label"],
             "profile": row["profile"],

@@ -165,6 +165,7 @@ def train(
     timeout: float | None = DEFAULT_TIMEOUT,
     mlflow_dir: str | Path | None = ROOT / "mlruns",
     run_name: str = "train",
+    callbacks: list | None = None,
 ) -> TrainResult:
     """Tune and fit LightGBM and fit the LR baseline on (X, y), which must be the training split only."""
     numeric, categorical = split_columns(X)
@@ -179,7 +180,8 @@ def train(
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     study = optuna.create_study(direction="maximize", sampler=optuna.samplers.TPESampler(seed=SEED))
-    study.optimize(objective, n_trials=n_trials, timeout=timeout)
+    # callbacks only observe the study (e.g. progress reporting); they do not change the search.
+    study.optimize(objective, n_trials=n_trials, timeout=timeout, callbacks=callbacks)
     best = dict(study.best_params)
     tune_seconds = time.perf_counter() - t0
 

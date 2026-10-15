@@ -102,8 +102,14 @@ def test_train_while_training_returns_409(client):
     assert first.status_code == 202
     second = client.post(f"/api/datasets/{up['id']}/train", json={"target": "Churn Value", "features": features})
     assert second.status_code == 409
+    body = client.get(f"/api/datasets/{up['id']}").json()
+    if body["status"] == "training" and body["training_progress"] is not None:
+        assert body["training_progress"]["trials_total"] == 3
+        assert 0 <= body["training_progress"]["trials_done"] <= 3
     client.app.state.trainer.wait()
-    assert client.get(f"/api/datasets/{up['id']}").json()["status"] == "trained"
+    done = client.get(f"/api/datasets/{up['id']}").json()
+    assert done["status"] == "trained"
+    assert done["training_progress"] is None
 
 
 @pytest.mark.parametrize(

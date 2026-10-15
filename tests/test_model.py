@@ -62,6 +62,18 @@ def test_training_twice_gives_the_same_metrics(telco_data, telco_profile):
     assert first.metrics == second.metrics
 
 
+def test_progress_callback_does_not_change_training(telco_data, telco_profile):
+    X = telco_data.df.loc[telco_data.train_idx, telco_profile["suggested_features"]]
+    y = telco_data.y.loc[telco_data.train_idx]
+    kwargs = dict(target=telco_data.target, positive_label=telco_data.positive_label,
+                  n_trials=3, timeout=None, mlflow_dir=None)
+    seen = []
+    with_cb = train(X, y, callbacks=[lambda study, trial: seen.append(len(study.trials))], **kwargs)
+    without = train(X, y, **kwargs)
+    assert seen == [1, 2, 3]
+    assert with_cb.metrics == without.metrics
+
+
 def test_threshold_comes_from_training_data(telco_result):
     m = telco_result.metrics["lightgbm"]
     assert 0 < m["threshold_f1_oof"] < 1

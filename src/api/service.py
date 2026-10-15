@@ -91,7 +91,7 @@ def same_target(row: dict, target: str, positive_label: str | None) -> bool:
     return positive_label is None or _norm_label(positive_label) == _norm_label(row.get("positive_label"))
 
 
-def train_and_score(data: PreparedData, features: list[str], settings: Settings, run_name: str):
+def train_and_score(data: PreparedData, features: list[str], settings: Settings, run_name: str, on_trial=None):
     """Same steps as src.churn.evaluate (minus its class-weight side check), plus curve points for the UI."""
     t0 = time.perf_counter()
     X_tr, y_tr = data.df.loc[data.train_idx, features], data.y.loc[data.train_idx]
@@ -100,6 +100,7 @@ def train_and_score(data: PreparedData, features: list[str], settings: Settings,
         X_tr, y_tr, target=data.target, positive_label=data.positive_label,
         n_trials=settings.n_trials, timeout=settings.timeout_seconds or None,
         mlflow_dir=settings.mlflow_dir, run_name=run_name,
+        callbacks=[lambda study, trial: on_trial(len(study.trials))] if on_trial else None,
     )
     test, p_lgbm, p_lr = score_test(result.model, result.baseline, X_te, y_te)
     y = y_te.to_numpy()
@@ -129,12 +130,17 @@ class Trainer:
         self.settings = settings
         self._lock = threading.Lock()
         self._busy: str | None = None
+        self._progress: dict[str, int] = {}
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="churn-trainer")
         self._models: dict[str, tuple[float, ChurnModel]] = {}
 
     @property
     def busy(self) -> str | None:
         return self._busy
+
+    def progress(self, dataset_id: str) -> dict | None:
+        """Optuna trials finished so far for the dataset being trained (in memory; the app has one worker)."""
+        return dict(self._progress) if self._busy == dataset_id and self._progress else None
 
     def start(self, dataset_id: str, path: Path, target: str, positive_label: str | None,
               features: list[str]) -> bool:
@@ -152,7 +158,13 @@ class Trainer:
     def _run(self, dataset_id, path, target, positive_label, features) -> None:
         try:
             data = load_prepared(path, target, positive_label, self.settings)
-            result, metrics = train_and_score(data, features, self.settings, run_name=f"api-{dataset_id}")
+            self._progress = {"trials_done": 0, "trials_total": self.settings.n_trials}
+
+            def on_trial(done: int) -> None:
+                self._progress = {"trials_done": done, "trials_total": self.settings.n_trials}
+
+            result, metrics = train_and_score(data, features, self.settings, run_name=f"api-{dataset_id}",
+                                              on_trial=on_trial)
             model_dir = self.settings.models_dir / dataset_id
             model_path = save_model(result.model, model_dir)
             self.store.save_model(dataset_id, str(model_path), result.mlflow_run_id, features, metrics)
@@ -163,6 +175,7 @@ class Trainer:
         finally:
             with self._lock:
                 self._busy = None
+                self._progress = {}
 
     def wait(self, timeout: float = 600) -> None:
         """Blocks until the worker is idle (used by tests)."""
