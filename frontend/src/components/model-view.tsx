@@ -71,7 +71,11 @@ export function ModelView({ id }: { id: string }) {
   return <ModelReport id={id} metrics={data.model.metrics} />;
 }
 
-function verdict([lo, hi]: Interval): { text: string; tone: string } {
+// A difference whose CI is above zero but smaller than this is called "slightly better".
+const SMALL_EDGE = 0.02;
+
+function verdict(diff: number, [lo, hi]: Interval): { text: string; tone: string } {
+  if (lo > 0 && diff < SMALL_EDGE) return { text: "LightGBM is slightly better than the baseline", tone: "text-emerald-700" };
   if (lo > 0) return { text: "LightGBM is better than the baseline", tone: "text-emerald-700" };
   if (hi < 0) return { text: "The baseline is better than LightGBM", tone: "text-amber-700" };
   return { text: "No clear difference between LightGBM and the baseline", tone: "text-foreground" };
@@ -109,7 +113,7 @@ function ScoreCard({ title, lgbm, lr, lgbmCi, lrCi, note }: {
 function ModelReport({ id, metrics }: { id: string; metrics: ModelMetrics }) {
   const { test, training, curves } = metrics;
   const diff = test.difference_lightgbm_minus_lr;
-  const v = verdict(diff.roc_auc_ci95);
+  const v = verdict(diff.roc_auc, diff.roc_auc_ci95);
   const at = test.at_threshold_lightgbm;
   const nChurners = Math.round(test.n * test.positive_rate);
   const importance = metrics.global_importance_top10;
