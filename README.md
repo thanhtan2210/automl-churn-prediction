@@ -4,6 +4,8 @@ Upload a list of telecom subscribers and find out who is likely to cancel — an
 
 ![Demo: upload, leakage check, training, scoring and a customer's reasons](docs/images/demo.gif)
 
+> *Scope: a working prototype — it runs locally for one user, on uploaded files, with a random train/test split. See [What production would need](#what-production-would-need).*
+
 ## Problem → Approach → Results
 
 <!-- summary:start -->
@@ -106,6 +108,17 @@ Activate `.venv` in every terminal that runs Python. Settings are in `.env.examp
 - **Tuning hit an edge of the search space** on Telco (`min_child_samples` = 198, range 20–200), so a wider range might change the model slightly.
 - **Not done:** the Cell2Cell dataset; one user, no authentication, no deployment.
 <!-- limitations:end -->
+
+### What production would need
+
+This app shows the method end to end. Using it on real customers every month would also need:
+
+- **A data feed instead of uploads**: read customers from the CRM or data warehouse and score them on a schedule, so the call list is never stale.
+- **Time-based validation**: train on earlier months and test on later ones. Neither dataset here has dates, so the split is random, which can overstate how well the model does on next month's customers.
+- **Calibrated probabilities**: check on held-out data that a customer's score matches how often such customers really leave, before showing expected churners or revenue at risk (the app deliberately shows neither today).
+- **Monitoring and retraining**: watch the incoming data for changes, retrain on a schedule, and replace the current model only when the new one does better on recent customers.
+- **Measuring the effect**: compare contacted and not-contacted customers in a controlled experiment, to show that acting on the list actually keeps customers.
+- **Accounts and hosting**: sign-in, separate storage per user or team, and a hosted service instead of a local app.
 
 ## Authors
 
