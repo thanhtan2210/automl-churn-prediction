@@ -1,42 +1,48 @@
-import logging
-import os
+from pathlib import Path
+
 import pandas as pd
 import pytest
 
-# Force MLflow to use local tracking URI during test runs to avoid slow remote HTTP calls to Dagshub
-os.environ["MLFLOW_TRACKING_URI"] = "file:./mlruns_test"
+from src.churn.data import prepare, read_table
+from src.churn.profile import profile_dataset
+from src.churn.train import train
+
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
+TELCO = FIXTURES / "telco_sample.csv"
+IRANIAN = FIXTURES / "iranian_sample.csv"
 
 
-@pytest.fixture(autouse=True)
-def set_log_level():
-    """Set a default log level for tests so test output is stable."""
-    logging.basicConfig(level=logging.ERROR)
+@pytest.fixture(scope="session")
+def telco_data():
+    return prepare(read_table(TELCO), "Churn Value")
+
+
+@pytest.fixture(scope="session")
+def iranian_data():
+    return prepare(read_table(IRANIAN), "Churn")
+
+
+@pytest.fixture(scope="session")
+def telco_profile(telco_data):
+    return profile_dataset(telco_data)
+
+
+@pytest.fixture(scope="session")
+def iranian_profile(iranian_data):
+    return profile_dataset(iranian_data)
+
+
+@pytest.fixture(scope="session")
+def telco_result(telco_data, telco_profile):
+    """A small model trained on the Telco sample with the profiler's suggested columns."""
+    features = telco_profile["suggested_features"]
+    X = telco_data.df.loc[telco_data.train_idx, features]
+    y = telco_data.y.loc[telco_data.train_idx]
+    return train(X, y, target=telco_data.target, positive_label=telco_data.positive_label,
+                 n_trials=2, timeout=None, mlflow_dir=None)
 
 
 @pytest.fixture
-def tmp_df():
-    """Return a small DataFrame used in tests."""
-    # Provide a minimal but schema-compliant DataFrame matching RawTelcoSchema
-    return pd.DataFrame(
-        {
-            "CustomerID": ["C1", "C2", "C3"],
-            "Gender": ["Male", "Female", "Male"],
-            "SeniorCitizen": [0, 1, 0],
-            "Partner": ["Yes", "No", "Yes"],
-            "Dependents": ["No", "No", "Yes"],
-            "tenure": [1, 10, 24],
-            "PhoneService": ["Yes", "Yes", "No"],
-            "InternetService": ["DSL", "Fiber Optic", "No"],
-            "MonthlyCharges": [50.0, 75.0, 100.0],
-            "TotalCharges": [100.0, 750.0, 2400.0],
-            "Churn": [0, 1, 0],
-        }
-    )
-
-
-@pytest.fixture
-def tmp_csv(tmp_path, tmp_df):
-    """Write the tmp_df to a CSV file in tmp_path and return the path."""
-    p = tmp_path / "sample.csv"
-    tmp_df.to_csv(p, index=False)
-    return p
+def telco_raw():
+    """The fixture file exactly as a user would upload it (raw names, blanks, extra columns)."""
+    return pd.read_csv(TELCO, encoding="utf-8")

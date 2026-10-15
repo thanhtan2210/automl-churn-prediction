@@ -1,0 +1,329 @@
+{
+  "dataset": "iranian",
+  "generated_by": "python -m src.churn.evaluate --dataset iranian --n-trials 40",
+  "generated_at": "2026-10-14T12:11:30+00:00",
+  "seed": 42,
+  "note": "The train/test split (stratified 80/20, random_state=42, after removing exact duplicates) is identical to the Phase 1 leakage audit, so this test set was already looked at in Phase 1. No choice in Phase 2 (features, thresholds, search space, model) was based on test-set numbers.",
+  "data": {
+    "file": "data/raw/iranian_churn/Customer Churn.csv",
+    "sha256": "90d5fb6bd1630cd4de4b4d28fcf8b4cb92a8f6ab7484605b0799d47386f7dbe1",
+    "target": "Churn",
+    "positive_label": "1",
+    "n_rows_raw": 3150,
+    "n_duplicates_removed": 300,
+    "n_rows": 2850,
+    "n_train": 2280,
+    "n_test": 570,
+    "positive_rate_train": 0.15657894736842104,
+    "positive_rate_test": 0.156140350877193
+  },
+  "features": {
+    "used": [
+      "Call Failure",
+      "Complains",
+      "Subscription Length",
+      "Charge Amount",
+      "Seconds of Use",
+      "Frequency of use",
+      "Frequency of SMS",
+      "Distinct Called Numbers",
+      "Age Group",
+      "Tariff Plan",
+      "Status",
+      "Age",
+      "Customer Value"
+    ],
+    "excluded": {},
+    "timing_questions": [],
+    "profile": [
+      {
+        "name": "Call Failure",
+        "role": "numeric",
+        "single_column_auc": 0.49833777205531166,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Complains",
+        "role": "numeric",
+        "single_column_auc": 0.6985557568898237,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Subscription Length",
+        "role": "numeric",
+        "single_column_auc": 0.6312222771075104,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Charge Amount",
+        "role": "numeric",
+        "single_column_auc": 0.6838956231867213,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Seconds of Use",
+        "role": "numeric",
+        "single_column_auc": 0.7886360331073139,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Frequency of use",
+        "role": "numeric",
+        "single_column_auc": 0.7796327308865821,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Frequency of SMS",
+        "role": "numeric",
+        "single_column_auc": 0.6809520635227612,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Distinct Called Numbers",
+        "role": "numeric",
+        "single_column_auc": 0.7096617594879039,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Age Group",
+        "role": "numeric",
+        "single_column_auc": 0.5509136035965373,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Tariff Plan",
+        "role": "numeric",
+        "single_column_auc": 0.5396515329349837,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Status",
+        "role": "numeric",
+        "single_column_auc": 0.7879738913277646,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Age",
+        "role": "numeric",
+        "single_column_auc": 0.5509136035965373,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Customer Value",
+        "role": "numeric",
+        "single_column_auc": 0.7591683470985848,
+        "missing_indicator_auc": null,
+        "flags": []
+      }
+    ]
+  },
+  "training": {
+    "n_train": 2280,
+    "positive_rate_train": 0.15657894736842104,
+    "n_features": 13,
+    "lightgbm": {
+      "cv_auc_mean": 0.9868810953367511,
+      "cv_auc_std": 0.00440139458127645,
+      "oof_auc": 0.9871029014830061,
+      "threshold_f1_oof": 0.22943906711019768,
+      "best_params": {
+        "num_leaves": 61,
+        "min_child_samples": 39,
+        "learning_rate": 0.020290259175155104,
+        "n_estimators": 558,
+        "subsample": 0.776827305557332,
+        "colsample_bytree": 0.6934908106207796,
+        "reg_lambda": 0.0161452835040853
+      }
+    },
+    "logistic_regression": {
+      "cv_auc_mean": 0.9331981220763133,
+      "cv_auc_std": 0.0033814350322069722
+    },
+    "optuna": {
+      "sampler": "TPESampler(seed=42)",
+      "n_trials_requested": 40,
+      "n_trials_completed": 40,
+      "timeout_seconds": null,
+      "stopped_by_timeout": false
+    },
+    "test": {
+      "lightgbm": {
+        "roc_auc": 0.9876311056086338,
+        "roc_auc_ci95": [
+          0.978155449217714,
+          0.9952776650661617
+        ],
+        "pr_auc": 0.9512111659251551,
+        "pr_auc_ci95": [
+          0.9202091508754137,
+          0.977720868886111
+        ]
+      },
+      "logistic_regression": {
+        "roc_auc": 0.926872853839146,
+        "roc_auc_ci95": [
+          0.8987570024404217,
+          0.949391779550806
+        ],
+        "pr_auc": 0.76031054865196,
+        "pr_auc_ci95": [
+          0.676769663044717,
+          0.8311641348862968
+        ]
+      },
+      "at_threshold_lightgbm": {
+        "threshold": 0.22943906711019768,
+        "n_flagged": 101,
+        "precision": 0.8118811881188119,
+        "recall": 0.9213483146067416
+      }
+    }
+  },
+  "class_weight_check": {
+    "settings": "LGBM n_estimators=300, learning_rate=0.05, this pipeline and feature set, 5-fold CV on train",
+    "no_class_weight": {
+      "cv_auc_mean": 0.9856776620899639,
+      "cv_auc_std": 0.004648891680051443
+    },
+    "class_weight_balanced": {
+      "cv_auc_mean": 0.9846844783981668,
+      "cv_auc_std": 0.005351864996645381
+    },
+    "audit_s6": {
+      "source": "reports/leakage_audit_iranian.json (final LightGBM: fixed params, class_weight='balanced', generic ratio features, audit feature set)",
+      "cv_auc_mean": 0.9845749774848584,
+      "test_roc_auc": 0.9904809736270411
+    }
+  },
+  "test": {
+    "n": 570,
+    "positive_rate": 0.156140350877193,
+    "lightgbm": {
+      "roc_auc": 0.9876311056086338,
+      "roc_auc_ci95": [
+        0.978155449217714,
+        0.9952776650661617
+      ],
+      "pr_auc": 0.9512111659251551,
+      "pr_auc_ci95": [
+        0.9202091508754137,
+        0.977720868886111
+      ]
+    },
+    "logistic_regression": {
+      "roc_auc": 0.926872853839146,
+      "roc_auc_ci95": [
+        0.8987570024404217,
+        0.949391779550806
+      ],
+      "pr_auc": 0.76031054865196,
+      "pr_auc_ci95": [
+        0.676769663044717,
+        0.8311641348862968
+      ]
+    },
+    "at_threshold_lightgbm": {
+      "threshold": 0.22943906711019768,
+      "n_flagged": 101,
+      "precision": 0.8118811881188119,
+      "recall": 0.9213483146067416
+    },
+    "bootstrap": {
+      "n_requested": 1000,
+      "n_used": 1000,
+      "paired": true,
+      "seed": 42
+    },
+    "difference_lightgbm_minus_lr": {
+      "roc_auc": 0.06075825176948779,
+      "roc_auc_ci95": [
+        0.04061421693626778,
+        0.08770880364513678
+      ],
+      "pr_auc": 0.19090061727319507,
+      "pr_auc_ci95": [
+        0.13085714836980483,
+        0.2586754637455557
+      ]
+    }
+  },
+  "global_importance_top10": [
+    {
+      "feature": "Frequency of use",
+      "mean_abs_contribution": 1.2275795104755773
+    },
+    {
+      "feature": "Status",
+      "mean_abs_contribution": 0.9611454916837977
+    },
+    {
+      "feature": "Seconds of Use",
+      "mean_abs_contribution": 0.8540339158426585
+    },
+    {
+      "feature": "Complains",
+      "mean_abs_contribution": 0.7740899388846271
+    },
+    {
+      "feature": "Call Failure",
+      "mean_abs_contribution": 0.7365026597601118
+    },
+    {
+      "feature": "Customer Value",
+      "mean_abs_contribution": 0.7163941386452559
+    },
+    {
+      "feature": "Subscription Length",
+      "mean_abs_contribution": 0.7083634493864146
+    },
+    {
+      "feature": "Frequency of SMS",
+      "mean_abs_contribution": 0.4087593416026594
+    },
+    {
+      "feature": "Age Group",
+      "mean_abs_contribution": 0.29665943594911875
+    },
+    {
+      "feature": "Distinct Called Numbers",
+      "mean_abs_contribution": 0.27895557128883025
+    }
+  ],
+  "timing_seconds": {
+    "profile": 2.9,
+    "tune": 52.7,
+    "train_total": 55.0,
+    "total": 76.9
+  },
+  "environment": {
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "processor": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+    "cpu_count": 8,
+    "ram_gb": 15.9,
+    "libraries": {
+      "pandas": "2.3.3",
+      "numpy": "2.2.6",
+      "scikit-learn": "1.7.2",
+      "lightgbm": "4.7.0",
+      "optuna": "4.9.0",
+      "mlflow": "2.22.4",
+      "openpyxl": "3.1.5",
+      "scipy": "1.17.1",
+      "joblib": "1.6.0"
+    }
+  }
+}

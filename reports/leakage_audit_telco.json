@@ -1,0 +1,1115 @@
+{
+  "dataset": "telco",
+  "generated_by": "python -m scripts.audit.leakage_audit --dataset telco",
+  "generated_at": "2026-10-14T10:05:49+00:00",
+  "seed": 42,
+  "data": {
+    "file": "data/raw/Telco_customer_churn.xlsx",
+    "sha256": "1bcbc0ccc9b352175216979102628e579cfbde2c3ff57b005de168a433122640",
+    "n_rows_raw": 7043,
+    "n_duplicates_removed": 0,
+    "n_rows": 7043,
+    "n_train": 5634,
+    "n_test": 1409,
+    "positive_rate_all": 0.2653698707936959,
+    "positive_rate_train": 0.2653532126375577,
+    "positive_rate_test": 0.2654364797728886,
+    "target": "Churn Value",
+    "dropped_identifier_columns": [
+      "CustomerID",
+      "Count",
+      "Country",
+      "State",
+      "City",
+      "Zip Code",
+      "Lat Long",
+      "Latitude",
+      "Longitude",
+      "Churn Label"
+    ],
+    "feature_candidates": [
+      "Gender",
+      "Senior Citizen",
+      "Partner",
+      "Dependents",
+      "Tenure Months",
+      "Phone Service",
+      "Multiple Lines",
+      "Internet Service",
+      "Online Security",
+      "Online Backup",
+      "Device Protection",
+      "Tech Support",
+      "Streaming TV",
+      "Streaming Movies",
+      "Contract",
+      "Paperless Billing",
+      "Payment Method",
+      "Monthly Charges",
+      "Total Charges",
+      "Churn Score",
+      "CLTV",
+      "Churn Reason"
+    ],
+    "n_duplicates_in_clean_feature_set": 22,
+    "n_conflicting_label_duplicates_in_clean_feature_set": 18
+  },
+  "protocol": {
+    "dedup": "exact duplicates over all feature candidates + target, before the split",
+    "split": "80/20 stratified train_test_split, random_state=42",
+    "cv": "StratifiedKFold(n_splits=5, shuffle=True, random_state=42) on the train part",
+    "model": "LGBMClassifier(n_estimators=300, learning_rate=0.05, random_state=42, verbose=-1)",
+    "tree_preprocessing": "categoricals: impute 'missing' + OrdinalEncoder; numerics: median impute",
+    "baseline": "LogisticRegression(class_weight='balanced'), one-hot + StandardScaler in a Pipeline",
+    "cv_auc_std": "population std (ddof=0) over the 5 folds"
+  },
+  "ladder": [
+    {
+      "key": "S0",
+      "description": "As the old code: Churn Score/CLTV/Churn Reason kept; FE columns chosen on all rows; SMOTENC on the whole train part before CV; score = max(CV AUC, AUC on a val split after isotonic calibration on that same split)",
+      "settings": {
+        "report": "max_val_calibrated",
+        "smote": "before_cv",
+        "fe_select": "all_rows",
+        "drop": []
+      },
+      "n_features_in": 22,
+      "fe_selected_columns": [
+        "Churn Score",
+        "Tenure Months",
+        "Total Charges",
+        "Monthly Charges",
+        "CLTV"
+      ],
+      "n_rows_cv": 6622,
+      "cv_auc_mean": 1.0,
+      "cv_auc_std": 0.0,
+      "cv_auc_folds": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "val": {
+        "n_val": 1127,
+        "calibration": "isotonic",
+        "val_auc_before_calibration": 1.0,
+        "val_auc_after_calibration_on_val": 1.0,
+        "calibration_accepted": true
+      },
+      "reported_score": 1.0,
+      "test_auc": 1.0,
+      "seconds": 2.27
+    },
+    {
+      "key": "S1",
+      "description": "Report CV AUC only (no max with calibrated val AUC)",
+      "settings": {
+        "report": "cv",
+        "smote": "before_cv",
+        "fe_select": "all_rows",
+        "drop": []
+      },
+      "n_features_in": 22,
+      "fe_selected_columns": [
+        "Churn Score",
+        "Tenure Months",
+        "Total Charges",
+        "Monthly Charges",
+        "CLTV"
+      ],
+      "n_rows_cv": 8278,
+      "cv_auc_mean": 1.0,
+      "cv_auc_std": 0.0,
+      "cv_auc_folds": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "val": null,
+      "reported_score": 1.0,
+      "test_auc": 1.0,
+      "seconds": 2.22
+    },
+    {
+      "key": "S2",
+      "description": "SMOTENC inside the imblearn Pipeline (fit per fold)",
+      "settings": {
+        "report": "cv",
+        "smote": "in_pipeline",
+        "fe_select": "all_rows",
+        "drop": []
+      },
+      "n_features_in": 22,
+      "fe_selected_columns": [
+        "Churn Score",
+        "Tenure Months",
+        "Total Charges",
+        "Monthly Charges",
+        "CLTV"
+      ],
+      "n_rows_cv": 5634,
+      "cv_auc_mean": 1.0,
+      "cv_auc_std": 0.0,
+      "cv_auc_folds": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "val": null,
+      "reported_score": 1.0,
+      "test_auc": 1.0,
+      "seconds": 5.73
+    },
+    {
+      "key": "S3",
+      "description": "Generic FE column choice fitted on the training fold (in Pipeline)",
+      "settings": {
+        "report": "cv",
+        "smote": "in_pipeline",
+        "fe_select": "train_fold",
+        "drop": []
+      },
+      "n_features_in": 22,
+      "fe_selected_columns": [
+        "Churn Score",
+        "Tenure Months",
+        "Monthly Charges",
+        "Total Charges",
+        "CLTV"
+      ],
+      "n_rows_cv": 5634,
+      "cv_auc_mean": 1.0,
+      "cv_auc_std": 0.0,
+      "cv_auc_folds": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "val": null,
+      "reported_score": 1.0,
+      "test_auc": 1.0,
+      "seconds": 5.88
+    },
+    {
+      "key": "S4",
+      "description": "Drop Churn Reason",
+      "settings": {
+        "report": "cv",
+        "smote": "in_pipeline",
+        "fe_select": "train_fold",
+        "drop": [
+          "Churn Reason"
+        ]
+      },
+      "n_features_in": 21,
+      "fe_selected_columns": [
+        "Churn Score",
+        "Tenure Months",
+        "Monthly Charges",
+        "Total Charges",
+        "CLTV"
+      ],
+      "n_rows_cv": 5634,
+      "cv_auc_mean": 0.9815465327678374,
+      "cv_auc_std": 0.0017737072626954778,
+      "cv_auc_folds": [
+        0.9839036724669995,
+        0.9786930670673581,
+        0.9822637454962597,
+        0.9823000985571875,
+        0.9805720802513821
+      ],
+      "val": null,
+      "reported_score": 0.9815465327678374,
+      "test_auc": 0.9797153116846212,
+      "seconds": 7.65
+    },
+    {
+      "key": "S5",
+      "description": "Drop Churn Score and CLTV",
+      "settings": {
+        "report": "cv",
+        "smote": "in_pipeline",
+        "fe_select": "train_fold",
+        "drop": [
+          "Churn Reason",
+          "Churn Score",
+          "CLTV"
+        ]
+      },
+      "n_features_in": 19,
+      "fe_selected_columns": [
+        "Tenure Months",
+        "Monthly Charges",
+        "Total Charges"
+      ],
+      "n_rows_cv": 5634,
+      "cv_auc_mean": 0.8489835053126656,
+      "cv_auc_std": 0.013839774282861452,
+      "cv_auc_folds": [
+        0.8623673113276139,
+        0.8336059812902913,
+        0.840250512982082,
+        0.8400586496049633,
+        0.8686350713583771
+      ],
+      "val": null,
+      "reported_score": 0.8489835053126656,
+      "test_auc": 0.8405215841277223,
+      "seconds": 6.37
+    },
+    {
+      "key": "S6",
+      "description": "No SMOTE; LightGBM class_weight='balanced'",
+      "settings": {
+        "report": "cv",
+        "smote": "none",
+        "fe_select": "train_fold",
+        "drop": [
+          "Churn Reason",
+          "Churn Score",
+          "CLTV"
+        ]
+      },
+      "n_features_in": 19,
+      "fe_selected_columns": [
+        "Tenure Months",
+        "Monthly Charges",
+        "Total Charges"
+      ],
+      "n_rows_cv": 5634,
+      "cv_auc_mean": 0.8484075884286864,
+      "cv_auc_std": 0.013960814253795027,
+      "cv_auc_folds": [
+        0.8637608453298434,
+        0.8369181490637068,
+        0.8445442134005461,
+        0.831204659654565,
+        0.8656100746947705
+      ],
+      "val": null,
+      "reported_score": 0.8484075884286864,
+      "test_auc": 0.8406352527835904,
+      "seconds": 2.35
+    }
+  ],
+  "one_fix_from_s0": [
+    {
+      "key": "fix: report CV only",
+      "description": "S0 but report CV AUC only",
+      "settings": {
+        "report": "cv",
+        "smote": "before_cv",
+        "fe_select": "all_rows",
+        "drop": []
+      },
+      "n_features_in": 22,
+      "fe_selected_columns": [
+        "Churn Score",
+        "Tenure Months",
+        "Total Charges",
+        "Monthly Charges",
+        "CLTV"
+      ],
+      "n_rows_cv": 8278,
+      "cv_auc_mean": 1.0,
+      "cv_auc_std": 0.0,
+      "cv_auc_folds": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "val": null,
+      "reported_score": 1.0,
+      "test_auc": 1.0,
+      "seconds": 3.41
+    },
+    {
+      "key": "fix: SMOTENC in Pipeline",
+      "description": "S0 but SMOTENC fitted per fold",
+      "settings": {
+        "report": "max_val_calibrated",
+        "smote": "in_pipeline",
+        "fe_select": "all_rows",
+        "drop": []
+      },
+      "n_features_in": 22,
+      "fe_selected_columns": [
+        "Churn Score",
+        "Tenure Months",
+        "Total Charges",
+        "Monthly Charges",
+        "CLTV"
+      ],
+      "n_rows_cv": 4507,
+      "cv_auc_mean": 1.0,
+      "cv_auc_std": 0.0,
+      "cv_auc_folds": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "val": {
+        "n_val": 1127,
+        "calibration": "isotonic",
+        "val_auc_before_calibration": 1.0,
+        "val_auc_after_calibration_on_val": 1.0,
+        "calibration_accepted": true
+      },
+      "reported_score": 1.0,
+      "test_auc": 1.0,
+      "seconds": 5.84
+    },
+    {
+      "key": "fix: FE choice on train",
+      "description": "S0 but generic FE columns chosen on the train part",
+      "settings": {
+        "report": "max_val_calibrated",
+        "smote": "before_cv",
+        "fe_select": "train_fold",
+        "drop": []
+      },
+      "n_features_in": 22,
+      "fe_selected_columns": [
+        "Churn Score",
+        "Tenure Months",
+        "Monthly Charges",
+        "Total Charges",
+        "CLTV"
+      ],
+      "n_rows_cv": 6622,
+      "cv_auc_mean": 1.0,
+      "cv_auc_std": 4.965068306494546e-17,
+      "cv_auc_folds": [
+        1.0,
+        0.9999999999999999,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "val": {
+        "n_val": 1127,
+        "calibration": "isotonic",
+        "val_auc_before_calibration": 1.0,
+        "val_auc_after_calibration_on_val": 1.0,
+        "calibration_accepted": true
+      },
+      "reported_score": 1.0,
+      "test_auc": 1.0,
+      "seconds": 2.46
+    },
+    {
+      "key": "fix: drop Churn Reason",
+      "description": "S0 without Churn Reason",
+      "settings": {
+        "report": "max_val_calibrated",
+        "smote": "before_cv",
+        "fe_select": "all_rows",
+        "drop": [
+          "Churn Reason"
+        ]
+      },
+      "n_features_in": 21,
+      "fe_selected_columns": [
+        "Churn Score",
+        "Tenure Months",
+        "Total Charges",
+        "Monthly Charges",
+        "CLTV"
+      ],
+      "n_rows_cv": 6622,
+      "cv_auc_mean": 0.9906370753495134,
+      "cv_auc_std": 0.0009910815137628994,
+      "cv_auc_folds": [
+        0.9897677407007422,
+        0.9909388342834229,
+        0.9894510820456184,
+        0.9922623013663622,
+        0.9907654183514207
+      ],
+      "val": {
+        "n_val": 1127,
+        "calibration": "isotonic",
+        "val_auc_before_calibration": 0.985050813500719,
+        "val_auc_after_calibration_on_val": 0.9863575040796213,
+        "calibration_accepted": true
+      },
+      "reported_score": 0.9906370753495134,
+      "test_auc": 0.975680074401302,
+      "seconds": 7.35
+    },
+    {
+      "key": "fix: drop Churn Score, CLTV",
+      "description": "S0 without Churn Score and CLTV",
+      "settings": {
+        "report": "max_val_calibrated",
+        "smote": "before_cv",
+        "fe_select": "all_rows",
+        "drop": [
+          "Churn Score",
+          "CLTV"
+        ]
+      },
+      "n_features_in": 20,
+      "fe_selected_columns": [
+        "Tenure Months",
+        "Total Charges",
+        "Monthly Charges"
+      ],
+      "n_rows_cv": 6622,
+      "cv_auc_mean": 1.0,
+      "cv_auc_std": 0.0,
+      "cv_auc_folds": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "val": {
+        "n_val": 1127,
+        "calibration": "isotonic",
+        "val_auc_before_calibration": 1.0,
+        "val_auc_after_calibration_on_val": 1.0,
+        "calibration_accepted": true
+      },
+      "reported_score": 1.0,
+      "test_auc": 1.0,
+      "seconds": 8.79
+    },
+    {
+      "key": "fix: class_weight, no SMOTE",
+      "description": "S0 with class_weight='balanced' instead of SMOTENC",
+      "settings": {
+        "report": "max_val_calibrated",
+        "smote": "none",
+        "fe_select": "all_rows",
+        "drop": []
+      },
+      "n_features_in": 22,
+      "fe_selected_columns": [
+        "Churn Score",
+        "Tenure Months",
+        "Total Charges",
+        "Monthly Charges",
+        "CLTV"
+      ],
+      "n_rows_cv": 4507,
+      "cv_auc_mean": 1.0,
+      "cv_auc_std": 0.0,
+      "cv_auc_folds": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "val": {
+        "n_val": 1127,
+        "calibration": "isotonic",
+        "val_auc_before_calibration": 1.0,
+        "val_auc_after_calibration_on_val": 1.0,
+        "calibration_accepted": true
+      },
+      "reported_score": 1.0,
+      "test_auc": 1.0,
+      "seconds": 1.81
+    }
+  ],
+  "reference_settings": [
+    {
+      "key": "clean features, SMOTENC before CV",
+      "description": "",
+      "settings": {
+        "report": "cv",
+        "smote": "before_cv",
+        "fe_select": "train_fold",
+        "drop": [
+          "Churn Reason",
+          "Churn Score",
+          "CLTV"
+        ]
+      },
+      "n_features_in": 19,
+      "fe_selected_columns": [
+        "Tenure Months",
+        "Monthly Charges",
+        "Total Charges"
+      ],
+      "n_rows_cv": 8278,
+      "cv_auc_mean": 0.9283891646738555,
+      "cv_auc_std": 0.006431009331155498,
+      "cv_auc_folds": [
+        0.9277346029078858,
+        0.9264729048519218,
+        0.9196400441083806,
+        0.9284781732471129,
+        0.9396200982539765
+      ],
+      "val": null,
+      "reported_score": 0.9283891646738555,
+      "test_auc": 0.8405215841277223,
+      "seconds": 4.85
+    },
+    {
+      "key": "clean features, SMOTENC in Pipeline",
+      "description": "",
+      "settings": {
+        "report": "cv",
+        "smote": "in_pipeline",
+        "fe_select": "train_fold",
+        "drop": [
+          "Churn Reason",
+          "Churn Score",
+          "CLTV"
+        ]
+      },
+      "n_features_in": 19,
+      "fe_selected_columns": [
+        "Tenure Months",
+        "Monthly Charges",
+        "Total Charges"
+      ],
+      "n_rows_cv": 5634,
+      "cv_auc_mean": 0.8489835053126656,
+      "cv_auc_std": 0.013839774282861452,
+      "cv_auc_folds": [
+        0.8623673113276139,
+        0.8336059812902913,
+        0.840250512982082,
+        0.8400586496049633,
+        0.8686350713583771
+      ],
+      "val": null,
+      "reported_score": 0.8489835053126656,
+      "test_auc": 0.8405215841277223,
+      "seconds": 8.35
+    },
+    {
+      "key": "clean features + Churn Score, SMOTENC before CV",
+      "description": "",
+      "settings": {
+        "report": "cv",
+        "smote": "before_cv",
+        "fe_select": "train_fold",
+        "drop": [
+          "Churn Reason",
+          "CLTV"
+        ]
+      },
+      "n_features_in": 20,
+      "fe_selected_columns": [
+        "Churn Score",
+        "Tenure Months",
+        "Monthly Charges",
+        "Total Charges"
+      ],
+      "n_rows_cv": 8278,
+      "cv_auc_mean": 0.9917273159369042,
+      "cv_auc_std": 0.001398423852732393,
+      "cv_auc_folds": [
+        0.9925756727111484,
+        0.9909201498284674,
+        0.9897532614530095,
+        0.9915444333456005,
+        0.9938430623462956
+      ],
+      "val": null,
+      "reported_score": 0.9917273159369042,
+      "test_auc": 0.97978764628381,
+      "seconds": 3.87
+    }
+  ],
+  "final": {
+    "features": [
+      "Gender",
+      "Senior Citizen",
+      "Partner",
+      "Dependents",
+      "Tenure Months",
+      "Phone Service",
+      "Multiple Lines",
+      "Internet Service",
+      "Online Security",
+      "Online Backup",
+      "Device Protection",
+      "Tech Support",
+      "Streaming TV",
+      "Streaming Movies",
+      "Contract",
+      "Paperless Billing",
+      "Payment Method",
+      "Monthly Charges",
+      "Total Charges"
+    ],
+    "n_features": 19,
+    "lightgbm": {
+      "cv_auc_mean": 0.8484075884286864,
+      "cv_auc_std": 0.013960814253795027,
+      "test_roc_auc": 0.8406352527835904,
+      "test_pr_auc": 0.6435103099360341,
+      "test_roc_auc_ci95": [
+        0.81673903459063,
+        0.8622666560103742
+      ],
+      "test_pr_auc_ci95": [
+        0.5882917021867085,
+        0.6962305311777871
+      ]
+    },
+    "logistic_regression": {
+      "cv_auc_mean": 0.8585189136824287,
+      "cv_auc_std": 0.014772177305614437,
+      "test_roc_auc": 0.8487561032318065,
+      "test_pr_auc": 0.6452785283344838,
+      "test_roc_auc_ci95": [
+        0.8251916063891307,
+        0.8699170488863486
+      ],
+      "test_pr_auc_ci95": [
+        0.5892651326360666,
+        0.6998096109160351
+      ]
+    },
+    "difference_lightgbm_minus_lr": {
+      "roc_auc": -0.008120850448216088,
+      "roc_auc_ci95": [
+        -0.018768723458315206,
+        0.003122002000227443
+      ],
+      "pr_auc": -0.0017682183984497613,
+      "pr_auc_ci95": [
+        -0.033546156164114264,
+        0.02647856563125581
+      ]
+    },
+    "bootstrap": {
+      "n_requested": 1000,
+      "n_used": 1000,
+      "paired": true,
+      "seed": 42
+    },
+    "test_n": 1409,
+    "test_positive_rate": 0.2654364797728886,
+    "seconds": 10.61
+  },
+  "single_feature": {
+    "file": "reports/single_feature_auc_telco.csv",
+    "computed_on": "training split only, 5-fold CV, LGBMClassifier(max_depth=3, n_estimators=300, learning_rate=0.05)",
+    "rows": [
+      {
+        "column": "Churn Label",
+        "dtype": "object",
+        "n_unique": 2,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 1.0,
+        "cv_auc_std": 0.0,
+        "used_as_feature": false
+      },
+      {
+        "column": "Churn Reason",
+        "dtype": "object",
+        "n_unique": 20,
+        "missing_rate": 0.7346467873624423,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 1.0,
+        "missing_indicator_auc": 0.0,
+        "cv_auc_mean": 1.0,
+        "cv_auc_std": 0.0,
+        "used_as_feature": true
+      },
+      {
+        "column": "Churn Score",
+        "dtype": "int64",
+        "n_unique": 85,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.9395705715431854,
+        "cv_auc_std": 0.006720584789815868,
+        "used_as_feature": true
+      },
+      {
+        "column": "Contract",
+        "dtype": "object",
+        "n_unique": 3,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.7394946374570726,
+        "cv_auc_std": 0.016899381719812374,
+        "used_as_feature": true
+      },
+      {
+        "column": "Tenure Months",
+        "dtype": "int64",
+        "n_unique": 73,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.7278757156492978,
+        "cv_auc_std": 0.026249444439352305,
+        "used_as_feature": true
+      },
+      {
+        "column": "Online Security",
+        "dtype": "object",
+        "n_unique": 3,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.7075291311441632,
+        "cv_auc_std": 0.007092954782058734,
+        "used_as_feature": true
+      },
+      {
+        "column": "Tech Support",
+        "dtype": "object",
+        "n_unique": 3,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.7048444920282226,
+        "cv_auc_std": 0.018432561440175292,
+        "used_as_feature": true
+      },
+      {
+        "column": "Internet Service",
+        "dtype": "object",
+        "n_unique": 3,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.6975488131787919,
+        "cv_auc_std": 0.012284964689947121,
+        "used_as_feature": true
+      },
+      {
+        "column": "Online Backup",
+        "dtype": "object",
+        "n_unique": 3,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.6790461938535692,
+        "cv_auc_std": 0.010885739627836385,
+        "used_as_feature": true
+      },
+      {
+        "column": "Payment Method",
+        "dtype": "object",
+        "n_unique": 4,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.676385399376007,
+        "cv_auc_std": 0.013673524797503441,
+        "used_as_feature": true
+      },
+      {
+        "column": "Device Protection",
+        "dtype": "object",
+        "n_unique": 3,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.6695103854682627,
+        "cv_auc_std": 0.01793108129123305,
+        "used_as_feature": true
+      },
+      {
+        "column": "Monthly Charges",
+        "dtype": "float64",
+        "n_unique": 1489,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.6663111998627893,
+        "cv_auc_std": 0.018095981979955114,
+        "used_as_feature": true
+      },
+      {
+        "column": "Total Charges",
+        "dtype": "float64",
+        "n_unique": 5275,
+        "missing_rate": 0.0014199503017394391,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0019328340178787146,
+        "missing_indicator_auc": 0.49903358299106065,
+        "cv_auc_mean": 0.6467491723390238,
+        "cv_auc_std": 0.018219610021987968,
+        "used_as_feature": true
+      },
+      {
+        "column": "Dependents",
+        "dtype": "object",
+        "n_unique": 2,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.6212008140350498,
+        "cv_auc_std": 0.004739928424390179,
+        "used_as_feature": true
+      },
+      {
+        "column": "Streaming Movies",
+        "dtype": "object",
+        "n_unique": 3,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.6206991452131835,
+        "cv_auc_std": 0.01964406185122165,
+        "used_as_feature": true
+      },
+      {
+        "column": "Streaming TV",
+        "dtype": "object",
+        "n_unique": 3,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.6166426178689512,
+        "cv_auc_std": 0.018883393196012267,
+        "used_as_feature": true
+      },
+      {
+        "column": "Paperless Billing",
+        "dtype": "object",
+        "n_unique": 2,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.6102190022094338,
+        "cv_auc_std": 0.019093626548221755,
+        "used_as_feature": true
+      },
+      {
+        "column": "Partner",
+        "dtype": "object",
+        "n_unique": 2,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.5824703195793044,
+        "cv_auc_std": 0.009821904866519245,
+        "used_as_feature": true
+      },
+      {
+        "column": "Senior Citizen",
+        "dtype": "object",
+        "n_unique": 2,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.5609458192182549,
+        "cv_auc_std": 0.011687501261228613,
+        "used_as_feature": true
+      },
+      {
+        "column": "CLTV",
+        "dtype": "int64",
+        "n_unique": 3111,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.5577257580763431,
+        "cv_auc_std": 0.011758660774511747,
+        "used_as_feature": true
+      },
+      {
+        "column": "Multiple Lines",
+        "dtype": "object",
+        "n_unique": 3,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.5218819369606372,
+        "cv_auc_std": 0.01855446906882827,
+        "used_as_feature": true
+      },
+      {
+        "column": "Lat Long",
+        "dtype": "object",
+        "n_unique": 1650,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.5205711822433502,
+        "cv_auc_std": 0.013215558852248033,
+        "used_as_feature": false
+      },
+      {
+        "column": "Latitude",
+        "dtype": "float64",
+        "n_unique": 1650,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.5196948141242548,
+        "cv_auc_std": 0.011969971829875498,
+        "used_as_feature": false
+      },
+      {
+        "column": "City",
+        "dtype": "object",
+        "n_unique": 1128,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.514709442384975,
+        "cv_auc_std": 0.011534857755495741,
+        "used_as_feature": false
+      },
+      {
+        "column": "Zip Code",
+        "dtype": "int64",
+        "n_unique": 1650,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.5110483672811237,
+        "cv_auc_std": 0.009890519135134385,
+        "used_as_feature": false
+      },
+      {
+        "column": "CustomerID",
+        "dtype": "object",
+        "n_unique": 5634,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.5086682572144293,
+        "cv_auc_std": 0.013973890818198676,
+        "used_as_feature": false
+      },
+      {
+        "column": "Phone Service",
+        "dtype": "object",
+        "n_unique": 2,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.5060699330519529,
+        "cv_auc_std": 0.012962866988605371,
+        "used_as_feature": true
+      },
+      {
+        "column": "Count",
+        "dtype": "int64",
+        "n_unique": 1,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.5,
+        "cv_auc_std": 0.0,
+        "used_as_feature": false
+      },
+      {
+        "column": "Country",
+        "dtype": "object",
+        "n_unique": 1,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.5,
+        "cv_auc_std": 0.0,
+        "used_as_feature": false
+      },
+      {
+        "column": "State",
+        "dtype": "object",
+        "n_unique": 1,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.5,
+        "cv_auc_std": 0.0,
+        "used_as_feature": false
+      },
+      {
+        "column": "Longitude",
+        "dtype": "float64",
+        "n_unique": 1649,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.4872700489402167,
+        "cv_auc_std": 0.0027496681122614556,
+        "used_as_feature": false
+      },
+      {
+        "column": "Gender",
+        "dtype": "object",
+        "n_unique": 2,
+        "missing_rate": 0.0,
+        "missing_rate_positive": 0.0,
+        "missing_rate_negative": 0.0,
+        "missing_indicator_auc": 0.5,
+        "cv_auc_mean": 0.4846031287056996,
+        "cv_auc_std": 0.014101900410374896,
+        "used_as_feature": true
+      }
+    ]
+  },
+  "environment": {
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "processor": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+    "cpu_count": 8,
+    "ram_gb": 15.9,
+    "libraries": {
+      "pandas": "2.3.3",
+      "numpy": "2.2.6",
+      "scikit-learn": "1.7.2",
+      "imbalanced-learn": "0.14.2",
+      "lightgbm": "4.7.0",
+      "openpyxl": "3.1.5",
+      "scipy": "1.17.1"
+    }
+  },
+  "runtime_seconds": 102.7
+}

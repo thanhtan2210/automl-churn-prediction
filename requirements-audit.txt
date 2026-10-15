@@ -1,0 +1,4 @@
+# Extra dependency for the Phase 1 leakage audit (scripts/audit/leakage_audit.py), which re-creates
+# the old SMOTE/SMOTENC protocol. Not needed by src/churn.
+-r requirements.txt
+imbalanced-learn==0.14.2

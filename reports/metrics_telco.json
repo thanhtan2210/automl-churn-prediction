@@ -1,0 +1,535 @@
+{
+  "dataset": "telco",
+  "generated_by": "python -m src.churn.evaluate --dataset telco --n-trials 40",
+  "generated_at": "2026-10-14T12:10:11+00:00",
+  "seed": 42,
+  "note": "The train/test split (stratified 80/20, random_state=42, after removing exact duplicates) is identical to the Phase 1 leakage audit, so this test set was already looked at in Phase 1. No choice in Phase 2 (features, thresholds, search space, model) was based on test-set numbers.",
+  "data": {
+    "file": "data/raw/Telco_customer_churn.xlsx",
+    "sha256": "1bcbc0ccc9b352175216979102628e579cfbde2c3ff57b005de168a433122640",
+    "target": "Churn Value",
+    "positive_label": "1",
+    "n_rows_raw": 7043,
+    "n_duplicates_removed": 0,
+    "n_rows": 7043,
+    "n_train": 5634,
+    "n_test": 1409,
+    "positive_rate_train": 0.2653532126375577,
+    "positive_rate_test": 0.2654364797728886
+  },
+  "features": {
+    "used": [
+      "Gender",
+      "Senior Citizen",
+      "Partner",
+      "Dependents",
+      "Tenure Months",
+      "Phone Service",
+      "Multiple Lines",
+      "Internet Service",
+      "Online Security",
+      "Online Backup",
+      "Device Protection",
+      "Tech Support",
+      "Streaming TV",
+      "Streaming Movies",
+      "Contract",
+      "Paperless Billing",
+      "Payment Method",
+      "Monthly Charges",
+      "Total Charges",
+      "CLTV"
+    ],
+    "excluded": {
+      "CustomerID": [
+        "id"
+      ],
+      "Count": [
+        "constant"
+      ],
+      "Country": [
+        "constant"
+      ],
+      "State": [
+        "constant"
+      ],
+      "City": [
+        "location"
+      ],
+      "Zip Code": [
+        "location"
+      ],
+      "Lat Long": [
+        "location"
+      ],
+      "Latitude": [
+        "location"
+      ],
+      "Longitude": [
+        "location"
+      ],
+      "Churn Label": [
+        "target_copy"
+      ],
+      "Churn Score": [
+        "likely_leakage"
+      ],
+      "Churn Reason": [
+        "missing_reveals_target",
+        "target_copy"
+      ]
+    },
+    "timing_questions": [],
+    "profile": [
+      {
+        "name": "CustomerID",
+        "role": "id",
+        "single_column_auc": null,
+        "missing_indicator_auc": null,
+        "flags": [
+          "id"
+        ]
+      },
+      {
+        "name": "Count",
+        "role": "constant",
+        "single_column_auc": null,
+        "missing_indicator_auc": null,
+        "flags": [
+          "constant"
+        ]
+      },
+      {
+        "name": "Country",
+        "role": "constant",
+        "single_column_auc": null,
+        "missing_indicator_auc": null,
+        "flags": [
+          "constant"
+        ]
+      },
+      {
+        "name": "State",
+        "role": "constant",
+        "single_column_auc": null,
+        "missing_indicator_auc": null,
+        "flags": [
+          "constant"
+        ]
+      },
+      {
+        "name": "City",
+        "role": "categorical",
+        "single_column_auc": 0.514709442384975,
+        "missing_indicator_auc": null,
+        "flags": [
+          "location"
+        ]
+      },
+      {
+        "name": "Zip Code",
+        "role": "numeric",
+        "single_column_auc": 0.5110483672811237,
+        "missing_indicator_auc": null,
+        "flags": [
+          "location"
+        ]
+      },
+      {
+        "name": "Lat Long",
+        "role": "categorical",
+        "single_column_auc": 0.5205711822433502,
+        "missing_indicator_auc": null,
+        "flags": [
+          "location"
+        ]
+      },
+      {
+        "name": "Latitude",
+        "role": "numeric",
+        "single_column_auc": 0.5196948141242548,
+        "missing_indicator_auc": null,
+        "flags": [
+          "location"
+        ]
+      },
+      {
+        "name": "Longitude",
+        "role": "numeric",
+        "single_column_auc": 0.4872700489402167,
+        "missing_indicator_auc": null,
+        "flags": [
+          "location"
+        ]
+      },
+      {
+        "name": "Gender",
+        "role": "categorical",
+        "single_column_auc": 0.4846031287056996,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Senior Citizen",
+        "role": "categorical",
+        "single_column_auc": 0.5609458192182549,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Partner",
+        "role": "categorical",
+        "single_column_auc": 0.5824703195793044,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Dependents",
+        "role": "categorical",
+        "single_column_auc": 0.6212008140350498,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Tenure Months",
+        "role": "numeric",
+        "single_column_auc": 0.7278757156492978,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Phone Service",
+        "role": "categorical",
+        "single_column_auc": 0.5060699330519529,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Multiple Lines",
+        "role": "categorical",
+        "single_column_auc": 0.5218819369606372,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Internet Service",
+        "role": "categorical",
+        "single_column_auc": 0.6975488131787919,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Online Security",
+        "role": "categorical",
+        "single_column_auc": 0.7075291311441632,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Online Backup",
+        "role": "categorical",
+        "single_column_auc": 0.6790461938535692,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Device Protection",
+        "role": "categorical",
+        "single_column_auc": 0.6695103854682627,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Tech Support",
+        "role": "categorical",
+        "single_column_auc": 0.7048444920282226,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Streaming TV",
+        "role": "categorical",
+        "single_column_auc": 0.6166426178689512,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Streaming Movies",
+        "role": "categorical",
+        "single_column_auc": 0.6206991452131835,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Contract",
+        "role": "categorical",
+        "single_column_auc": 0.7394946374570726,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Paperless Billing",
+        "role": "categorical",
+        "single_column_auc": 0.6102190022094338,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Payment Method",
+        "role": "categorical",
+        "single_column_auc": 0.676385399376007,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Monthly Charges",
+        "role": "numeric",
+        "single_column_auc": 0.6663111998627893,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Total Charges",
+        "role": "numeric",
+        "single_column_auc": 0.6467491723390238,
+        "missing_indicator_auc": 0.5009664170089394,
+        "flags": []
+      },
+      {
+        "name": "Churn Label",
+        "role": "categorical",
+        "single_column_auc": 1.0,
+        "missing_indicator_auc": null,
+        "flags": [
+          "target_copy",
+          "check_timing"
+        ]
+      },
+      {
+        "name": "Churn Score",
+        "role": "numeric",
+        "single_column_auc": 0.9395705715431854,
+        "missing_indicator_auc": null,
+        "flags": [
+          "likely_leakage",
+          "check_timing"
+        ]
+      },
+      {
+        "name": "CLTV",
+        "role": "numeric",
+        "single_column_auc": 0.5577257580763431,
+        "missing_indicator_auc": null,
+        "flags": []
+      },
+      {
+        "name": "Churn Reason",
+        "role": "categorical",
+        "single_column_auc": 1.0,
+        "missing_indicator_auc": 1.0,
+        "flags": [
+          "missing_reveals_target",
+          "target_copy",
+          "check_timing"
+        ]
+      }
+    ]
+  },
+  "training": {
+    "n_train": 5634,
+    "positive_rate_train": 0.2653532126375577,
+    "n_features": 20,
+    "lightgbm": {
+      "cv_auc_mean": 0.8646751470352616,
+      "cv_auc_std": 0.014019174835805767,
+      "oof_auc": 0.8642020878162775,
+      "threshold_f1_oof": 0.26495072520044,
+      "best_params": {
+        "num_leaves": 30,
+        "min_child_samples": 198,
+        "learning_rate": 0.014970375025270639,
+        "n_estimators": 498,
+        "subsample": 0.6441674128201611,
+        "colsample_bytree": 0.7285316438961214,
+        "reg_lambda": 0.0034445716207434076
+      }
+    },
+    "logistic_regression": {
+      "cv_auc_mean": 0.8586821141631272,
+      "cv_auc_std": 0.014883387761731823
+    },
+    "optuna": {
+      "sampler": "TPESampler(seed=42)",
+      "n_trials_requested": 40,
+      "n_trials_completed": 40,
+      "timeout_seconds": null,
+      "stopped_by_timeout": false
+    },
+    "test": {
+      "lightgbm": {
+        "roc_auc": 0.8586633599421323,
+        "roc_auc_ci95": [
+          0.8371136128410126,
+          0.878984300544251
+        ],
+        "pr_auc": 0.6681727795290654,
+        "pr_auc_ci95": [
+          0.6137434953246115,
+          0.7213912137386728
+        ]
+      },
+      "logistic_regression": {
+        "roc_auc": 0.8487380195820093,
+        "roc_auc_ci95": [
+          0.825180830254617,
+          0.8697133592609965
+        ],
+        "pr_auc": 0.6438311322034055,
+        "pr_auc_ci95": [
+          0.588477161080844,
+          0.6988064240980904
+        ]
+      },
+      "at_threshold_lightgbm": {
+        "threshold": 0.26495072520044,
+        "n_flagged": 566,
+        "precision": 0.5318021201413428,
+        "recall": 0.8048128342245989
+      }
+    }
+  },
+  "class_weight_check": {
+    "settings": "LGBM n_estimators=300, learning_rate=0.05, this pipeline and feature set, 5-fold CV on train",
+    "no_class_weight": {
+      "cv_auc_mean": 0.8492925830124076,
+      "cv_auc_std": 0.014240328886775339
+    },
+    "class_weight_balanced": {
+      "cv_auc_mean": 0.8483784664179674,
+      "cv_auc_std": 0.013246918231805557
+    },
+    "audit_s6": {
+      "source": "reports/leakage_audit_telco.json (final LightGBM: fixed params, class_weight='balanced', generic ratio features, audit feature set)",
+      "cv_auc_mean": 0.8484075884286864,
+      "test_roc_auc": 0.8406352527835904
+    }
+  },
+  "test": {
+    "n": 1409,
+    "positive_rate": 0.2654364797728886,
+    "lightgbm": {
+      "roc_auc": 0.8586633599421323,
+      "roc_auc_ci95": [
+        0.8371136128410126,
+        0.878984300544251
+      ],
+      "pr_auc": 0.6681727795290654,
+      "pr_auc_ci95": [
+        0.6137434953246115,
+        0.7213912137386728
+      ]
+    },
+    "logistic_regression": {
+      "roc_auc": 0.8487380195820093,
+      "roc_auc_ci95": [
+        0.825180830254617,
+        0.8697133592609965
+      ],
+      "pr_auc": 0.6438311322034055,
+      "pr_auc_ci95": [
+        0.588477161080844,
+        0.6988064240980904
+      ]
+    },
+    "at_threshold_lightgbm": {
+      "threshold": 0.26495072520044,
+      "n_flagged": 566,
+      "precision": 0.5318021201413428,
+      "recall": 0.8048128342245989
+    },
+    "bootstrap": {
+      "n_requested": 1000,
+      "n_used": 1000,
+      "paired": true,
+      "seed": 42
+    },
+    "difference_lightgbm_minus_lr": {
+      "roc_auc": 0.009925340360122936,
+      "roc_auc_ci95": [
+        0.003220074714650298,
+        0.016858361262545384
+      ],
+      "pr_auc": 0.02434164732565991,
+      "pr_auc_ci95": [
+        0.0066203515153883735,
+        0.04046374782007439
+      ]
+    }
+  },
+  "global_importance_top10": [
+    {
+      "feature": "Contract",
+      "mean_abs_contribution": 0.7794429083341303
+    },
+    {
+      "feature": "Dependents",
+      "mean_abs_contribution": 0.5354302557896403
+    },
+    {
+      "feature": "Tenure Months",
+      "mean_abs_contribution": 0.373740454421345
+    },
+    {
+      "feature": "Online Security",
+      "mean_abs_contribution": 0.24513212718606073
+    },
+    {
+      "feature": "Internet Service",
+      "mean_abs_contribution": 0.22392295048331426
+    },
+    {
+      "feature": "Monthly Charges",
+      "mean_abs_contribution": 0.21471019483835982
+    },
+    {
+      "feature": "Total Charges",
+      "mean_abs_contribution": 0.1904224021593126
+    },
+    {
+      "feature": "Tech Support",
+      "mean_abs_contribution": 0.18087133262011115
+    },
+    {
+      "feature": "Payment Method",
+      "mean_abs_contribution": 0.15816298239074256
+    },
+    {
+      "feature": "Paperless Billing",
+      "mean_abs_contribution": 0.11762855136617856
+    }
+  ],
+  "timing_seconds": {
+    "profile": 9.9,
+    "tune": 84.1,
+    "train_total": 87.4,
+    "total": 117.0
+  },
+  "environment": {
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "processor": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+    "cpu_count": 8,
+    "ram_gb": 15.9,
+    "libraries": {
+      "pandas": "2.3.3",
+      "numpy": "2.2.6",
+      "scikit-learn": "1.7.2",
+      "lightgbm": "4.7.0",
+      "optuna": "4.9.0",
+      "mlflow": "2.22.4",
+      "openpyxl": "3.1.5",
+      "scipy": "1.17.1",
+      "joblib": "1.6.0"
+    }
+  }
+}

@@ -1,0 +1,175 @@
+"""Write every number in README.md from reports/*.json.
+
+    python -m scripts.render_readme
+
+Rewrites the text between <!-- <name>:start --> and <!-- <name>:end --> markers for the blocks
+below. tests/test_readme.py fails if README.md and this script disagree.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+README = ROOT / "README.md"
+
+
+def _load(name: str) -> dict:
+    with open(ROOT / "reports" / name, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _f(x: float, d: int = 3) -> str:
+    return f"{x:.{d}f}"
+
+
+def _ci(ci: list[float], d: int = 3) -> str:
+    return f"[{ci[0]:.{d}f}, {ci[1]:.{d}f}]"
+
+
+def _signed(x: float, d: int = 3) -> str:
+    return f"{x:+.{d}f}"
+
+
+def _pct(x: float) -> str:
+    return f"{x * 100:.0f}%"
+
+
+def blocks() -> dict[str, str]:
+    legacy = _load("legacy_repro_telco.json")
+    audit = _load("leakage_audit_telco.json")
+    audit_ir = _load("leakage_audit_iranian.json")
+    telco = _load("metrics_telco.json")
+    iranian = _load("metrics_iranian.json")
+    ladder = {r["key"]: r for r in audit["ladder"]}
+    refs = {r["key"]: r for r in audit["reference_settings"]}
+    smote_before = refs["clean features, SMOTENC before CV"]
+    t, i = telco["test"], iranian["test"]
+    td = t["difference_lightgbm_minus_lr"]
+
+    summary = "\n".join([
+        f"- **Problem.** The original AutoML pipeline reported ROC-AUC **{_f(legacy['reported_best_roc_auc'])}** on "
+        "IBM Telco. Three columns leak the answer (`Churn Reason`, `Churn Score`, `Churn Label`), and SMOTE ran "
+        "before cross-validation.",
+        "- **Approach.** Profile every column on the training split only and flag leaks by single-column AUC and "
+        "missingness; keep all learned steps in one scikit-learn `Pipeline`; tune one LightGBM with Optuna by CV on "
+        "train; compare it with a logistic-regression baseline on a test split scored once, with bootstrap CIs.",
+        f"- **Results.** IBM Telco: LightGBM **{_f(t['lightgbm']['roc_auc'])}** {_ci(t['lightgbm']['roc_auc_ci95'])} "
+        f"vs LR {_f(t['logistic_regression']['roc_auc'])} {_ci(t['logistic_regression']['roc_auc_ci95'])}, "
+        f"a small edge of {_signed(td['roc_auc'])} {_ci(td['roc_auc_ci95'])}. UCI Iranian: LightGBM "
+        f"**{_f(i['lightgbm']['roc_auc'])}** vs LR {_f(i['logistic_regression']['roc_auc'])}.",
+        "- Sources: `reports/legacy_repro_telco.json`, `reports/leakage_audit_telco.json`, "
+        "`reports/metrics_telco.json`, `reports/metrics_iranian.json`.",
+    ])
+
+    # Audit steps in the audit's own order; each one fixes one more problem than the step above.
+    steps = [
+        ("S0", "Old protocol: all columns kept, feature choice on all rows, SMOTE on the whole train part before "
+               "CV, score = max(CV AUC, AUC on a validation split calibrated on itself)"),
+        ("S1", "Report the CV AUC only"),
+        ("S2", "SMOTE inside the CV pipeline (fitted per fold)"),
+        ("S3", "Generated-feature choice made on the training fold"),
+        ("S4", "Drop `Churn Reason`"),
+        ("S5", "Drop `Churn Score` and `CLTV`"),
+        ("S6", "No SMOTE; `class_weight='balanced'` instead"),
+    ]
+    smote_inside = refs["clean features, SMOTENC in Pipeline"]
+    table1 = [
+        "**1. Removing leakage on IBM Telco.** The old code itself (Optuna, "
+        f"{legacy['optuna_n_trials']} trials) reports ROC-AUC {_f(legacy['reported_best_roc_auc'])}, and its model "
+        f"scores {_f(legacy['test_roc_auc'])} on the held-out test split. To see where that comes from, the audit "
+        "re-runs the old protocol with one fixed LightGBM and fixes one problem per step:",
+        "",
+        "| Step | Change from the step above | Score the protocol reports | Test ROC-AUC |",
+        "|---|---|---:|---:|",
+        *[f"| {k} | {label} | {_f(ladder[k]['reported_score'])} | {_f(ladder[k]['test_auc'])} |" for k, label in steps],
+        "",
+        "*Score the protocol reports* is what the training run would display: for S0 the old max() rule, from S1 on "
+        "the mean 5-fold CV AUC on the training split. *Test ROC-AUC* is the 20% test split. S1–S3 stay at "
+        f"{_f(ladder['S3']['reported_score'])} because `Churn Reason` alone gives the answer away (it is empty for "
+        "every customer who stayed), so the SMOTE effect only shows once the leaking columns are gone:",
+        "",
+        "| Comparison on clean features (S5 columns) | CV AUC | Test ROC-AUC |",
+        "|---|---:|---:|",
+        f"| SMOTE on the whole train part, then CV (old way) | {_f(smote_before['cv_auc_mean'])} | "
+        f"{_f(smote_before['test_auc'])} |",
+        f"| SMOTE inside the CV pipeline | {_f(smote_inside['cv_auc_mean'])} | {_f(smote_inside['test_auc'])} |",
+        "",
+        "Oversampling before CV inflates the CV estimate, not the model. Generated by "
+        "`scripts/audit/legacy_repro.py` (old code) and `python -m scripts.audit.leakage_audit --dataset telco` "
+        "(audit; details in `docs/cleanup/leakage_audit.md`). The audit also dropped `CLTV`; the final profiler "
+        "keeps it because it is not flagged (see Limitations).",
+    ]
+
+    def row(name: str, r: dict) -> list[str]:
+        x, at, d = r["test"], r["test"]["at_threshold_lightgbm"], r["test"]["difference_lightgbm_minus_lr"]
+        return [
+            f"| {name} | LightGBM (Optuna) | {_f(x['lightgbm']['roc_auc'])} {_ci(x['lightgbm']['roc_auc_ci95'])} | "
+            f"{_f(x['lightgbm']['pr_auc'])} {_ci(x['lightgbm']['pr_auc_ci95'])} | "
+            f"{_f(at['threshold'], 2)} | {_pct(at['precision'])} / {_pct(at['recall'])} |",
+            f"| | Logistic regression | {_f(x['logistic_regression']['roc_auc'])} "
+            f"{_ci(x['logistic_regression']['roc_auc_ci95'])} | {_f(x['logistic_regression']['pr_auc'])} "
+            f"{_ci(x['logistic_regression']['pr_auc_ci95'])} | | |",
+            f"| | Difference (paired) | {_signed(d['roc_auc'])} {_ci(d['roc_auc_ci95'])} | "
+            f"{_signed(d['pr_auc'])} {_ci(d['pr_auc_ci95'])} | | |",
+        ]
+
+    table2 = [
+        "**2. Clean results on the held-out test split** (95% bootstrap CIs, 1,000 paired resamples).",
+        "",
+        "| Dataset (test rows, churn rate) | Model | ROC-AUC | PR-AUC | Threshold | Precision / recall |",
+        "|---|---|---|---|---:|---|",
+        *row(f"IBM Telco ({t['n']:,}, {_pct(t['positive_rate'])})", telco),
+        *row(f"UCI Iranian ({i['n']:,}, {_pct(i['positive_rate'])})", iranian),
+        "",
+        "Generated by `python -m src.churn.evaluate --dataset telco|iranian` (`reports/metrics_*.json`). The "
+        "threshold maximises F1 on out-of-fold training predictions; precision/recall are for LightGBM on the test "
+        "split.",
+    ]
+
+    profile = {c["name"]: c for c in telco["features"]["profile"]}
+    at = t["at_threshold_lightgbm"]
+    best = telco["training"]["lightgbm"]["best_params"]
+    limitations = "\n".join([
+        "- **The Telco test split was seen before.** Phase 1 of the cleanup scored the same split (same seed); no "
+        "Phase 2 choice used test numbers, but the split is not pristine.",
+        "- **IBM Telco is fictional sample data** from IBM Cognos Analytics with no published license; it is used "
+        "for learning only.",
+        f"- **`CLTV` is kept** because the profiler does not flag it (single-column AUC "
+        f"{_f(profile['CLTV']['single_column_auc'], 2)}), but it is a value IBM computed, not a raw attribute.",
+        f"- **UCI Iranian is thinly documented**: {iranian['data']['n_duplicates_removed']} exact duplicate rows "
+        f"(removed), and {audit_ir['data']['n_conflicting_label_duplicates_in_clean_feature_set']} groups of rows "
+        "with identical features but different labels. Its very high AUC has no single leaking column "
+        "(`docs/cleanup/leakage_audit.md`).",
+        "- **The profiler only catches statistical leakage.** It cannot know when a column was recorded (for example "
+        "the call `duration` in UCI Bank Marketing is only known after the call); the timing question in the UI is a "
+        "prompt, not a check.",
+        f"- **The F1 threshold flags many customers**: {at['n_flagged']:,} of {t['n']:,} Telco test customers "
+        f"({_pct(at['n_flagged'] / t['n'])}). A retention team with a fixed budget would pick its own cut-off.",
+        f"- **Tuning hit an edge of the search space** on Telco (`min_child_samples` = {best['min_child_samples']}, "
+        "range 20–200), so a wider range might change the model slightly.",
+        "- **Not done:** the Cell2Cell dataset; one user, no authentication, no deployment.",
+    ])
+
+    return {"summary": summary, "results": "\n".join([*table1, "", *table2]), "limitations": limitations}
+
+
+def render(text: str) -> str:
+    for name, body in blocks().items():
+        pattern = re.compile(rf"(<!-- {name}:start -->).*?(<!-- {name}:end -->)", re.DOTALL)
+        if not pattern.search(text):
+            raise ValueError(f"README.md has no '{name}' markers")
+        text = pattern.sub(lambda m, b=body: f"{m.group(1)}\n{b}\n{m.group(2)}", text)
+    return text
+
+
+def main() -> None:
+    text = README.read_text(encoding="utf-8")
+    README.write_text(render(text), encoding="utf-8", newline="\n")
+    print("README.md blocks updated:", ", ".join(blocks()))
+
+
+if __name__ == "__main__":
+    main()

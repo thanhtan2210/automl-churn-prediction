@@ -1,6 +1,0 @@
-category,description
-A,This is a very long description that should be classified as text because it exceeds fifty characters in length definitely.
-B,Short desc
-A,Another extremely long piece of free form text that should trigger the TEXT role detection logic in our semantic layer.
-C,Small
-B,The quick brown fox jumps over the lazy dog and this sentence is intentionally long to test the mean length threshold.

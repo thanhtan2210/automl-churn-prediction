@@ -9,12 +9,13 @@ __pycache__/
 htmlcov/
 
 # Data & Models
-data/
-!data/dataset/catalog.yaml
+# App storage (SQLite DB, uploads, per-dataset models); raw data and samples are committed
+data/app/
 mlruns/
 mlruns_test/
+mlruns_audit/
+data/raw/cell2cell/
 mlflow.db
-models/
 ci_outputs/
 tests/results/
 *.db
@@ -22,13 +23,8 @@ test_*.db
 test_*.txt
 test_*.json
 tests/**/*.db
-<<<<<<< HEAD
-*.joblib
 *.pkl
-backend/app/core/training/*.joblib
-backend/app/core/training/*.pkl
-=======
->>>>>>> b2ed949dee392e72ddc0dd279e2e98339c05971b
+# models/<dataset>/model.joblib is small and committed (written by src.churn.evaluate)
 
 # Dependencies
 node_modules/
@@ -57,16 +53,11 @@ scripts/hadoop/
 # Environment & Secrets
 .env
 
-<<<<<<< HEAD
 # Notes & Private Docs / Paper Research (Local Only)
-=======
-# Notes & Private Docs
->>>>>>> b2ed949dee392e72ddc0dd279e2e98339c05971b
 note.md
 PROJECT_CONTEXT.md
 composite_target_design.md
 .openscience
-<<<<<<< HEAD
 .openscience/
 docs/openscience/
 docs/openscience/**
@@ -76,9 +67,6 @@ gap_analysis_results.json
 cross_dataset_results.*
 cross_dataset_results.json
 cross_dataset_results.md
-=======
-docs/paper/
->>>>>>> b2ed949dee392e72ddc0dd279e2e98339c05971b
 
 # CatBoost training artifacts
 catboost_info/

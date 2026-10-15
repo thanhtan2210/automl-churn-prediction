@@ -1,0 +1,63 @@
+{
+  "n_train": 2280,
+  "positive_rate_train": 0.15657894736842104,
+  "n_features": 13,
+  "lightgbm": {
+    "cv_auc_mean": 0.9868810953367511,
+    "cv_auc_std": 0.00440139458127645,
+    "oof_auc": 0.9871029014830061,
+    "threshold_f1_oof": 0.22943906711019768,
+    "best_params": {
+      "num_leaves": 61,
+      "min_child_samples": 39,
+      "learning_rate": 0.020290259175155104,
+      "n_estimators": 558,
+      "subsample": 0.776827305557332,
+      "colsample_bytree": 0.6934908106207796,
+      "reg_lambda": 0.0161452835040853
+    }
+  },
+  "logistic_regression": {
+    "cv_auc_mean": 0.9331981220763133,
+    "cv_auc_std": 0.0033814350322069722
+  },
+  "optuna": {
+    "sampler": "TPESampler(seed=42)",
+    "n_trials_requested": 40,
+    "n_trials_completed": 40,
+    "timeout_seconds": null,
+    "stopped_by_timeout": false
+  },
+  "test": {
+    "lightgbm": {
+      "roc_auc": 0.9876311056086338,
+      "roc_auc_ci95": [
+        0.978155449217714,
+        0.9952776650661617
+      ],
+      "pr_auc": 0.9512111659251551,
+      "pr_auc_ci95": [
+        0.9202091508754137,
+        0.977720868886111
+      ]
+    },
+    "logistic_regression": {
+      "roc_auc": 0.926872853839146,
+      "roc_auc_ci95": [
+        0.8987570024404217,
+        0.949391779550806
+      ],
+      "pr_auc": 0.76031054865196,
+      "pr_auc_ci95": [
+        0.676769663044717,
+        0.8311641348862968
+      ]
+    },
+    "at_threshold_lightgbm": {
+      "threshold": 0.22943906711019768,
+      "n_flagged": 101,
+      "precision": 0.8118811881188119,
+      "recall": 0.9213483146067416
+    }
+  }
+}
