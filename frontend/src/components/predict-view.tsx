@@ -10,6 +10,7 @@ import { HowToRead } from "@/components/how-to-read";
 import { ContactSlider } from "@/components/predict/contact-slider";
 import { KpiStrip } from "@/components/predict/kpi-strip";
 import { RiskHistogram } from "@/components/predict/risk-histogram";
+import { SegmentBreakdown } from "@/components/predict/segment-breakdown";
 import { TopReasons } from "@/components/predict/top-reasons";
 import { EmptyState, ErrorAlert, PageSkeleton } from "@/components/status";
 import { Badge } from "@/components/ui/badge";
@@ -137,6 +138,7 @@ function PredictResults({ result, metrics }: { result: PredictResponse; metrics:
       <RiskHistogram result={result} selected={range} onSelect={setRange} />
       <TopReasons result={result} edges={edges} selected={reason} onSelect={setReason} />
       <ContactSlider result={result} metrics={metrics} topN={topN} onChange={setTopN} />
+      <SegmentBreakdown result={result} metrics={metrics} />
       <section className="space-y-3 rounded-2xl border bg-card p-6 shadow-xs">
         <h2 className="text-lg font-semibold">Customers</h2>
         <p className="text-sm text-muted-foreground">{rows.length.toLocaleString()} shown</p>
