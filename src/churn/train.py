@@ -32,7 +32,7 @@ from .data import ROOT, SEED
 
 N_JOBS = 4  # fixed so results do not depend on the machine's core count
 DEFAULT_TRIALS = 40
-DEFAULT_TIMEOUT = 300
+DEFAULT_TIMEOUT = 900  # seconds; the app's Optuna time limit (evaluate.py uses no limit)
 
 
 class PrepareColumns(BaseEstimator, TransformerMixin):

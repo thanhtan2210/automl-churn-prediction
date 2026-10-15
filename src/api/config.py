@@ -22,7 +22,7 @@ def _mlflow_dir() -> Path | None:
 class Settings:
     app_dir: Path = field(default_factory=lambda: Path(os.getenv("CHURN_APP_DIR", str(ROOT / "data" / "app"))))
     n_trials: int = field(default_factory=lambda: int(os.getenv("CHURN_N_TRIALS", "40")))
-    timeout_seconds: float = field(default_factory=lambda: float(os.getenv("CHURN_TIMEOUT_SECONDS", "300")))
+    timeout_seconds: float = field(default_factory=lambda: float(os.getenv("CHURN_TIMEOUT_SECONDS", "900")))
     cors_origins: list[str] = field(default_factory=_origins)
     mlflow_dir: Path | None = field(default_factory=_mlflow_dir)
     max_upload_mb: int = 50
