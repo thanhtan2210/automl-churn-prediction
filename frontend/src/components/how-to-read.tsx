@@ -19,7 +19,7 @@ export function HowToRead({ items, intro }: { items: Faq[]; intro?: string }) {
         <CircleHelp aria-hidden />
         How to read this page
       </SheetTrigger>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+      <SheetContent className="overflow-y-auto data-[side=right]:w-full data-[side=right]:sm:max-w-md">
         <SheetHeader>
           <SheetTitle>How to read this page</SheetTitle>
           {intro && <SheetDescription>{intro}</SheetDescription>}

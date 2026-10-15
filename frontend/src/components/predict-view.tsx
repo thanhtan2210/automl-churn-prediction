@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import { FileDrop } from "@/components/file-drop";
 import { HowToRead } from "@/components/how-to-read";
 import { ContactSlider } from "@/components/predict/contact-slider";
+import { CustomerSheet } from "@/components/predict/customer-sheet";
 import { KpiStrip } from "@/components/predict/kpi-strip";
 import { RiskHistogram } from "@/components/predict/risk-histogram";
 import { SegmentBreakdown } from "@/components/predict/segment-breakdown";
@@ -121,6 +122,7 @@ export function PredictView({ id }: { id: string }) {
 
 function PredictResults({ result, metrics }: { result: PredictResponse; metrics: ModelMetrics; fileName: string | null }) {
   const [topN, setTopN] = useState(result.n_flagged);
+  const [selected, setSelected] = useState<number | null>(null);
   const rank = useMemo(() => ranks(result.predictions), [result]);
   const [range, setRange] = useState<Range | null>(null);
   const [reason, setReason] = useState<string | null>(null);
@@ -155,7 +157,13 @@ function PredictResults({ result, metrics }: { result: PredictResponse; metrics:
             </TableHeader>
             <TableBody>
               {rows.slice(0, 200).map((p) => (
-                <TableRow key={p.row} className={p.rank <= topN ? "bg-brand-soft/60" : undefined}>
+                <TableRow
+                  key={p.row}
+                  tabIndex={0}
+                  onClick={() => setSelected(p.row)}
+                  onKeyDown={(e) => e.key === "Enter" && setSelected(p.row)}
+                  className={p.rank <= topN ? "cursor-pointer bg-brand-soft/60" : "cursor-pointer"}
+                >
                   <TableCell className="tabular-nums">
                     {p.rank}
                     {p.rank <= topN && <span className="ml-1.5 text-xs font-medium text-primary">top {topN}</span>}
@@ -170,6 +178,12 @@ function PredictResults({ result, metrics }: { result: PredictResponse; metrics:
           </Table>
         </div>
       </section>
+      <CustomerSheet
+        result={result}
+        customer={selected === null ? null : result.predictions[selected]}
+        rank={selected === null ? null : rank[selected]}
+        onClose={() => setSelected(null)}
+      />
     </div>
   );
 }
