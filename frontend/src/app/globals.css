@@ -67,7 +67,7 @@
   --risk-safe: oklch(0.596 0.145 163.225);
   --risk-safe-soft: oklch(0.979 0.021 166.113);
   /* Warnings (leakage, errors): orange. */
-  --warn: oklch(0.553 0.195 38.402);
+  --warn: oklch(0.646 0.222 41.116);
   --warn-soft: oklch(0.98 0.016 73.684);
   --chart-baseline: oklch(0.62 0.02 260);
   --background: oklch(1 0 0);
@@ -84,7 +84,7 @@
   --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.553 0.195 38.402);
+  --destructive: oklch(0.646 0.222 41.116);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.673 0.182 276.935);

@@ -35,6 +35,8 @@ export interface ColumnProfile {
   dtype: string;
   n_unique: number;
   missing_rate: number;
+  missing_rate_churned: number;
+  missing_rate_stayed: number;
   single_column_auc: number | null;
   missing_indicator_auc: number | null;
   flags: ColumnFlag[];
