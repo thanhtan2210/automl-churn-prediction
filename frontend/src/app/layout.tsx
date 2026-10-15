@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import Link from "next/link";
+import { UserRoundSearch } from "lucide-react";
 
 import { Providers } from "@/components/providers";
 
 import "./globals.css";
+
+const inter = Inter({ subsets: ["latin"], display: "swap", variable: "--font-inter" });
 
 export const metadata: Metadata = {
   title: "Churn Predictor",
@@ -12,16 +16,19 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-muted/30 antialiased">
+    <html lang="en" className={inter.variable}>
+      <body className="min-h-screen bg-muted/40 antialiased">
         <Providers>
-          <header className="border-b bg-background">
-            <div className="mx-auto flex h-14 max-w-6xl items-center px-4 sm:px-6">
-              <Link href="/" className="font-semibold tracking-tight">
-                Churn Predictor
+          <header className="border-b bg-linear-to-r from-brand-soft via-background to-background">
+            <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
+              <Link href="/" className="flex items-center gap-2.5">
+                <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+                  <UserRoundSearch className="size-5" aria-hidden />
+                </span>
+                <span className="text-lg font-semibold tracking-tight">Churn Predictor</span>
               </Link>
-              <span className="ml-3 hidden text-sm text-muted-foreground sm:inline">
-                Who is likely to cancel — and why
+              <span className="hidden text-sm text-muted-foreground md:inline">
+                Find out which subscribers are likely to cancel — and why
               </span>
             </div>
           </header>
