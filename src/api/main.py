@@ -92,6 +92,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_methods=["GET", "POST"],
                        allow_headers=["*"])
 
+    candidates_cache: dict[str, list[dict]] = {}
+
+    def candidates_for(dataset_id: str, path: Path) -> list[dict]:
+        if dataset_id not in candidates_cache:
+            candidates_cache[dataset_id] = target_candidates(read_table(path))
+        return candidates_cache[dataset_id]
+
     def get_row(dataset_id: str) -> dict:
         row = store.get_dataset(dataset_id)
         if row is None:
@@ -124,7 +131,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             shutil.rmtree(dest_dir, ignore_errors=True)
             raise HTTPException(400, f"The file has {len(df)} rows; at least {settings.min_rows} are needed.")
         store.add_dataset(dataset_id, path.name, source, len(df), list(df.columns))
-        candidates = target_candidates(df)
+        candidates = candidates_cache[dataset_id] = target_candidates(df)
         return {
             "id": dataset_id,
             "filename": path.name,
@@ -154,7 +161,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                  profile=prof, status=status, error=None if status == "profiled" else row["error"])
             row = get_row(dataset_id)
 
-        candidates = target_candidates(read_table(path)) if row["profile"] is None else None
+        candidates = candidates_for(dataset_id, path)
         model = store.get_model(dataset_id)
         elapsed = None
         if row["status"] == "training":
@@ -174,7 +181,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "positive_label": row["positive_label"],
             "profile": row["profile"],
             "target_candidates": candidates,
-            "suggested_target": suggested_target(candidates) if candidates is not None else row["target"],
+            "suggested_target": suggested_target(candidates),
             "model": None if model is None else {
                 "created_at": model["created_at"],
                 "mlflow_run_id": model["mlflow_run_id"],
