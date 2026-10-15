@@ -9,13 +9,13 @@ import { FileDrop } from "@/components/file-drop";
 import { HowToRead } from "@/components/how-to-read";
 import { ContactSlider } from "@/components/predict/contact-slider";
 import { CustomerSheet } from "@/components/predict/customer-sheet";
+import { CustomerTable, type Row } from "@/components/predict/customer-table";
 import { KpiStrip } from "@/components/predict/kpi-strip";
 import { RiskHistogram } from "@/components/predict/risk-histogram";
 import { SegmentBreakdown } from "@/components/predict/segment-breakdown";
 import { TopReasons } from "@/components/predict/top-reasons";
 import { EmptyState, ErrorAlert, PageSkeleton } from "@/components/status";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api, ApiError } from "@/lib/api";
 import { pct } from "@/lib/format";
 import { quartileEdges, ranks, reasonLabels, type Range } from "@/lib/predict-analysis";
@@ -120,19 +120,31 @@ export function PredictView({ id }: { id: string }) {
   );
 }
 
-function PredictResults({ result, metrics }: { result: PredictResponse; metrics: ModelMetrics; fileName: string | null }) {
+function PredictResults({
+  result,
+  metrics,
+  fileName,
+}: {
+  result: PredictResponse;
+  metrics: ModelMetrics;
+  fileName: string | null;
+}) {
   const [topN, setTopN] = useState(result.n_flagged);
   const [selected, setSelected] = useState<number | null>(null);
-  const rank = useMemo(() => ranks(result.predictions), [result]);
   const [range, setRange] = useState<Range | null>(null);
   const [reason, setReason] = useState<string | null>(null);
+  const rank = useMemo(() => ranks(result.predictions), [result]);
   const edges = useMemo(() => quartileEdges(result), [result]);
+  const allRows: Row[] = useMemo(
+    () => result.predictions.map((p, row) => ({ ...p, row, rank: rank[row] })),
+    [result, rank],
+  );
   const rows = useMemo(() => {
-    let out = result.predictions.map((p, row) => ({ ...p, row, rank: rank[row] })).sort((a, b) => a.rank - b.rank);
+    let out = allRows;
     if (range) out = out.filter((p) => p.probability >= range[0] && (p.probability < range[1] || range[1] >= 1));
     if (reason) out = out.filter((p) => reasonLabels(p, result, edges).includes(reason));
     return out;
-  }, [result, range, reason, edges, rank]);
+  }, [allRows, range, reason, result, edges]);
 
   return (
     <div className="space-y-8">
@@ -141,43 +153,18 @@ function PredictResults({ result, metrics }: { result: PredictResponse; metrics:
       <TopReasons result={result} edges={edges} selected={reason} onSelect={setReason} />
       <ContactSlider result={result} metrics={metrics} topN={topN} onChange={setTopN} />
       <SegmentBreakdown result={result} metrics={metrics} />
-      <section className="space-y-3 rounded-2xl border bg-card p-6 shadow-xs">
-        <h2 className="text-lg font-semibold">Customers</h2>
-        <p className="text-sm text-muted-foreground">{rows.length.toLocaleString()} shown</p>
-        <div className="max-h-[480px] overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-20">Rank</TableHead>
-                <TableHead>{result.id_column ?? "Row"}</TableHead>
-                <TableHead className="text-right">Churn risk</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Top reasons</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.slice(0, 200).map((p) => (
-                <TableRow
-                  key={p.row}
-                  tabIndex={0}
-                  onClick={() => setSelected(p.row)}
-                  onKeyDown={(e) => e.key === "Enter" && setSelected(p.row)}
-                  className={p.rank <= topN ? "cursor-pointer bg-brand-soft/60" : "cursor-pointer"}
-                >
-                  <TableCell className="tabular-nums">
-                    {p.rank}
-                    {p.rank <= topN && <span className="ml-1.5 text-xs font-medium text-primary">top {topN}</span>}
-                  </TableCell>
-                  <TableCell className="font-medium">{p.id}</TableCell>
-                  <TableCell className="text-right tabular-nums">{pct(p.probability, 1)}</TableCell>
-                  <TableCell>{p.flagged ? "Flagged" : "Not flagged"}</TableCell>
-                  <TableCell className="text-xs">{p.reasons.map((r) => `${r.feature} = ${r.value}`).join(" · ")}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </section>
+      <CustomerTable
+        result={result}
+        rows={rows}
+        allRows={allRows}
+        topN={topN}
+        range={range}
+        reason={reason}
+        onClearRange={() => setRange(null)}
+        onClearReason={() => setReason(null)}
+        onOpen={setSelected}
+        fileName={fileName}
+      />
       <CustomerSheet
         result={result}
         customer={selected === null ? null : result.predictions[selected]}
