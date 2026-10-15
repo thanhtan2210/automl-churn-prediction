@@ -9,12 +9,13 @@ import { FileDrop } from "@/components/file-drop";
 import { HowToRead } from "@/components/how-to-read";
 import { KpiStrip } from "@/components/predict/kpi-strip";
 import { RiskHistogram } from "@/components/predict/risk-histogram";
+import { TopReasons } from "@/components/predict/top-reasons";
 import { EmptyState, ErrorAlert, PageSkeleton } from "@/components/status";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api, ApiError } from "@/lib/api";
 import { pct } from "@/lib/format";
-import { type Range } from "@/lib/predict-analysis";
+import { quartileEdges, reasonLabels, type Range } from "@/lib/predict-analysis";
 import { useDataset } from "@/lib/queries";
 import type { ModelMetrics, PredictResponse } from "@/lib/types";
 
@@ -118,15 +119,20 @@ export function PredictView({ id }: { id: string }) {
 
 function PredictResults({ result }: { result: PredictResponse; metrics: ModelMetrics; fileName: string | null }) {
   const [range, setRange] = useState<Range | null>(null);
+  const [reason, setReason] = useState<string | null>(null);
+  const edges = useMemo(() => quartileEdges(result), [result]);
   const rows = useMemo(() => {
-    const sorted = result.predictions.map((p, row) => ({ ...p, row })).sort((a, b) => b.probability - a.probability);
-    return range ? sorted.filter((p) => p.probability >= range[0] && (p.probability < range[1] || range[1] >= 1)) : sorted;
-  }, [result, range]);
+    let out = result.predictions.map((p, row) => ({ ...p, row })).sort((a, b) => b.probability - a.probability);
+    if (range) out = out.filter((p) => p.probability >= range[0] && (p.probability < range[1] || range[1] >= 1));
+    if (reason) out = out.filter((p) => reasonLabels(p, result, edges).includes(reason));
+    return out;
+  }, [result, range, reason, edges]);
 
   return (
     <div className="space-y-8">
       <KpiStrip result={result} />
       <RiskHistogram result={result} selected={range} onSelect={setRange} />
+      <TopReasons result={result} edges={edges} selected={reason} onSelect={setReason} />
       <section className="space-y-3 rounded-2xl border bg-card p-6 shadow-xs">
         <h2 className="text-lg font-semibold">Customers</h2>
         <p className="text-sm text-muted-foreground">{rows.length.toLocaleString()} shown</p>
